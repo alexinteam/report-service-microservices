@@ -1,0 +1,183 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: data-service-secret
+  namespace: data-service
+type: Opaque
+data:
+  JWT_SECRET: eW91ci1zZWNyZXQta2V5LWNoYW5nZS1pbi1wcm9kdWN0aW9u  # your-secret-key-change-in-production
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: data-service-db-secret
+  namespace: data-service
+type: Opaque
+data:
+  POSTGRES_DB: ZGF0YV9zZXJ2aWNl        # data_service
+  POSTGRES_USER: cG9zdGdyZXM=          # postgres
+  POSTGRES_PASSWORD: cGFzc3dvcmQ=      # password
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-service-config
+  namespace: data-service
+data:
+  PORT: "8084"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  AUTO_MIGRATE: "true"
+  SEED_DATA: "true"
+  DATABASE_URL: "postgres://postgres:password@data-service-postgres.data-service.svc.cluster.local:5432/data_service?sslmode=disable"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-service-db-config
+  namespace: data-service
+data:
+  POSTGRES_DB: data_service
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: password
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-service-postgres
+  namespace: data-service
+  labels:
+    app: data-service-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-service-postgres
+  template:
+    metadata:
+      labels:
+        app: data-service-postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        envFrom:
+        - configMapRef:
+            name: data-service-db-config
+        - secretRef:
+            name: data-service-db-secret
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: data-service-postgres-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-service-postgres-pvc
+  namespace: data-service
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-service-postgres
+  namespace: data-service
+  labels:
+    app: data-service-postgres
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+  selector:
+    app: data-service-postgres
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-service
+  namespace: data-service
+  labels:
+    app: data-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: data-service
+  template:
+    metadata:
+      labels:
+        app: data-service
+    spec:
+      containers:
+      - name: data-service
+        image: alexinteam/report-system-data-service:latest
+        ports:
+        - containerPort: 8084
+        envFrom:
+        - configMapRef:
+            name: data-service-config
+        - secretRef:
+            name: data-service-secret
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8084
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8084
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: data-service-service
+  namespace: data-service
+  labels:
+    app: data-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8084
+    targetPort: 8084
+    protocol: TCP
+  selector:
+    app: data-service

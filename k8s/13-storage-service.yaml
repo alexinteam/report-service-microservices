@@ -1,0 +1,204 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: storage-service-secret
+  namespace: storage-service
+type: Opaque
+data:
+  JWT_SECRET: eW91ci1zZWNyZXQta2V5LWNoYW5nZS1pbi1wcm9kdWN0aW9u  # your-secret-key-change-in-production
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: storage-service-db-secret
+  namespace: storage-service
+type: Opaque
+data:
+  POSTGRES_DB: c3RvcmFnZV9zZXJ2aWNl    # storage_service
+  POSTGRES_USER: cG9zdGdyZXM=          # postgres
+  POSTGRES_PASSWORD: cGFzc3dvcmQ=      # password
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-service-config
+  namespace: storage-service
+data:
+  PORT: "8087"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "info"
+  AUTO_MIGRATE: "true"
+  SEED_DATA: "true"
+  DATABASE_URL: "postgres://postgres:password@storage-service-postgres.storage-service.svc.cluster.local:5432/storage_service?sslmode=disable"
+  STORAGE_PATH: "/tmp/reports"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: storage-service-db-config
+  namespace: storage-service
+data:
+  POSTGRES_DB: storage_service
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: password
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage-service-postgres
+  namespace: storage-service
+  labels:
+    app: storage-service-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storage-service-postgres
+  template:
+    metadata:
+      labels:
+        app: storage-service-postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        envFrom:
+        - configMapRef:
+            name: storage-service-db-config
+        - secretRef:
+            name: storage-service-db-secret
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: storage-service-postgres-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: storage-service-postgres-pvc
+  namespace: storage-service
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-service-postgres
+  namespace: storage-service
+  labels:
+    app: storage-service-postgres
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+  selector:
+    app: storage-service-postgres
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage-service
+  namespace: storage-service
+  labels:
+    app: storage-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: storage-service
+  template:
+    metadata:
+      labels:
+        app: storage-service
+    spec:
+      containers:
+      - name: storage-service
+        image: alexinteam/report-system-storage-service:latest
+        ports:
+        - containerPort: 8087
+        envFrom:
+        - configMapRef:
+            name: storage-service-config
+        - secretRef:
+            name: storage-service-secret
+        volumeMounts:
+        - name: report-storage
+          mountPath: /tmp/reports
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8087
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8087
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: report-storage
+        persistentVolumeClaim:
+          claimName: report-storage-pvc
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: report-storage-pvc
+  namespace: storage-service
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-service-service
+  namespace: storage-service
+  labels:
+    app: storage-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8087
+    targetPort: 8087
+    protocol: TCP
+  selector:
+    app: storage-service

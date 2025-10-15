@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: api-gateway
+  labels:
+    name: api-gateway
+    purpose: microservice
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: user-service
+  labels:
+    name: user-service
+    purpose: microservice
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: template-service
+  labels:
+    name: template-service
+    purpose: microservice
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: report-service
+  labels:
+    name: report-service
+    purpose: microservice
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: data-service
+  labels:
+    name: data-service
+    purpose: microservice
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: notification-service
+  labels:
+    name: notification-service
+    purpose: microservice
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: storage-service
+  labels:
+    name: storage-service
+    purpose: microservice
+
