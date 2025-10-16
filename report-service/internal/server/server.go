@@ -153,6 +153,15 @@ func (s *Server) setupRouter(reportService *services.ReportService, jwtManager *
 
 // setupRoutes настраивает маршруты API
 func (s *Server) setupRoutes(router *gin.Engine, reportHandler *handlers.ReportHandler, sagaHandler *handlers.SagaHandler, jwtManager *jwt.Manager) {
+	// Health check endpoint
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"service":   "report-service",
+			"timestamp": time.Now().Unix(),
+		})
+	})
+
 	api := router.Group("/api/v1")
 	{
 		// Защищенные маршруты (требуют аутентификации)

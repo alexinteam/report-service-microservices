@@ -95,6 +95,15 @@ func (s *Server) setupRouter(userService *services.UserService, jwtManager *jwt.
 }
 
 func (s *Server) setupRoutes(router *gin.Engine, userHandler *handlers.UserHandler, jwtManager *jwt.Manager) {
+	// Health check endpoint
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"service":   "user-service",
+			"timestamp": time.Now().Unix(),
+		})
+	})
+
 	api := router.Group("/api/v1")
 	{
 		public := api.Group("/users")
