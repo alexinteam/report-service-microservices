@@ -34,10 +34,10 @@ data:
   DATABASE_URL: "postgres://postgres:password@api-gateway-postgres.api-gateway.svc.cluster.local:5432/api_gateway?sslmode=disable"
   USER_SERVICE_URL: "http://user-service-service.user-service.svc.cluster.local:8081"
   TEMPLATE_SERVICE_URL: "http://template-service-service.template-service.svc.cluster.local:8082"
-  REPORT_SERVICE_URL: "http://report-service-service.report-service.svc.cluster.local:8083"
-  DATA_SERVICE_URL: "http://data-service-service.data-service.svc.cluster.local:8084"
+  REPORT_SERVICE_URL: "http://report-service-service.report-service.svc.cluster.local:8084"
+  DATA_SERVICE_URL: "http://data-service-service.data-service.svc.cluster.local:8083"
   NOTIFICATION_SERVICE_URL: "http://notification-service-service.notification-service.svc.cluster.local:8085"
-  STORAGE_SERVICE_URL: "http://storage-service-service.storage-service.svc.cluster.local:8087"
+  STORAGE_SERVICE_URL: "http://storage-service-service.storage-service.svc.cluster.local:8086"
 
 ---
 apiVersion: v1
@@ -198,6 +198,7 @@ metadata:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
+  ingressClassName: nginx
   rules:
   - host: arch.homework
     http:

@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "report-microservices-api",
 		"name": "Report Microservices API - Complete Collection",
-		"description": "# Report Microservices API - Complete Collection\n\n## Описание\n\nЭта Postman коллекция предназначена для тестирования всех API endpoints микросервисов генерации отчетов с использованием домена `arch.homework` и Saga паттерна.\n\n## Структура коллекции\n\n### 1. API Gateway (Порт 8080)\n- **Health Check** - проверка состояния API Gateway\n\n### 2. User Service (Порт 8081)\n- **Register User** - регистрация нового пользователя\n- **Login User** - авторизация пользователя\n- **Get User Profile** - получение профиля пользователя\n\n### 3. Template Service (Порт 8082)\n- **Create Template** - создание шаблона отчета\n- **Get Templates** - получение списка шаблонов\n- **Get Template by ID** - получение шаблона по ID\n\n### 4. Report Service (Порт 8083)\n- **Create Report (Saga)** - создание отчета через Saga\n- **Get Reports** - получение списка отчетов\n- **Get Report by ID** - получение отчета по ID\n- **Generate Report** - генерация отчета\n\n### 5. Saga Management (Порт 8083)\n- **Create Report Saga** - создание Saga для отчета\n- **Get Saga Status** - получение статуса Saga\n- **Get Saga Progress** - получение прогресса выполнения\n- **Retry Failed Saga** - повтор неудачной Saga\n- **Cancel Saga** - отмена выполнения Saga\n- **List Sagas** - список Saga пользователя\n\n### 6. Data Service (Порт 8084)\n- **Create Data Source** - создание источника данных\n- **Get Data Sources** - получение списка источников данных\n- **Collect Data** - сбор данных\n\n### 7. Notification Service (Порт 8085)\n- **Send Notification** - отправка уведомления\n- **Get Notifications** - получение списка уведомлений\n\n### 8. Scheduler Service (Порт 8086)\n- **Create Schedule** - создание расписания\n- **Get Schedules** - получение списка расписаний\n\n### 9. Storage Service (Порт 8087)\n- **Upload File** - загрузка файла\n- **Download File** - скачивание файла\n- **List Files** - список файлов\n\n## Переменные окружения\n\nКоллекция использует следующие переменные:\n\n- `base_url` - базовый URL (http://arch.homework)\n- `jwt_token` - JWT токен для авторизации\n- `saga_id` - ID Saga для отслеживания\n- `template_id` - ID шаблона\n- `report_id` - ID отчета\n- `file_id` - ID файла\n\n## Автоматизация\n\n### Pre-request Scripts\n- Автоматическая установка базового URL\n- Извлечение JWT токена из ответа логина\n\n### Test Scripts\n- Проверка времени ответа (< 5000ms)\n- Проверка Content-Type\n- Автоматическое сохранение ID для последующих запросов\n- Специфичные тесты для Saga endpoints\n\n## Примеры использования\n\n### 1. Полный цикл создания отчета через Saga\n\n```bash\n# 1. Регистрация пользователя\nPOST http://arch.homework:8081/api/v1/users/register\n{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}\n\n# 2. Авторизация\nPOST http://arch.homework:8081/api/v1/users/login\n{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}\n\n# 3. Создание шаблона\nPOST http://arch.homework:8082/api/v1/templates\n{\n  \"name\": \"Monthly Sales Report\",\n  \"description\": \"Template for monthly sales reports\",\n  \"content\": \"SELECT * FROM sales WHERE month = '{{month}}'\",\n  \"parameters\": [\n    {\n      \"name\": \"month\",\n      \"type\": \"string\",\n      \"required\": true,\n      \"description\": \"Month in YYYY-MM format\"\n    }\n  ]\n}\n\n# 4. Создание отчета через Saga\nPOST http://arch.homework:8083/api/v1/sagas/reports\n{\n  \"template_id\": \"1\",\n  \"parameters\": {\n    \"month\": \"2024-01\"\n  }\n}\n\n# 5. Отслеживание прогресса Saga\nGET http://arch.homework:8083/api/v1/sagas/{saga_id}/progress\n\n# 6. Получение статуса Saga\nGET http://arch.homework:8083/api/v1/sagas/{saga_id}\n```\n\n### 2. Управление неудачными Saga\n\n```bash\n# 1. Получение списка неудачных Saga\nGET http://arch.homework:8083/api/v1/sagas?status=failed&page=1&limit=10\n\n# 2. Повтор неудачной Saga\nPOST http://arch.homework:8083/api/v1/sagas/{saga_id}/retry\n\n# 3. Отмена выполняющейся Saga\nDELETE http://arch.homework:8083/api/v1/sagas/{saga_id}\n```\n\n## Особенности Saga Pattern\n\n### Идемпотентность\n- Все операции Saga идемпотентны\n- Повторные вызовы безопасны\n- Автоматическое отслеживание состояния\n\n### Компенсация\n- Автоматическая компенсация при ошибках\n- Откат выполненных шагов\n- Надежное восстановление состояния\n\n### Мониторинг\n- Отслеживание прогресса выполнения\n- Детальная информация о каждом шаге\n- История выполнения Saga\n\n## Test Data Examples\n\n### User Registration Data\n```json\n{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}\n```\n\n### Template Creation Data\n```json\n{\n  \"name\": \"Monthly Sales Report\",\n  \"description\": \"Template for monthly sales reports\",\n  \"content\": \"SELECT * FROM sales WHERE month = '{{month}}'\",\n  \"parameters\": [\n    {\n      \"name\": \"month\",\n      \"type\": \"string\",\n      \"required\": true,\n      \"description\": \"Month in YYYY-MM format\"\n    }\n  ]\n}\n```\n\n### Report Creation Data (Saga)\n```json\n{\n  \"template_id\": \"1\",\n  \"parameters\": {\n    \"month\": \"2024-01\"\n  }\n}\n```\n\n### Expected Responses\n\n#### Successful Saga Creation\n```json\n{\n  \"message\": \"Saga создания отчета запущена\",\n  \"saga_id\": \"saga-20240101120000-abc123\",\n  \"status\": \"started\"\n}\n```\n\n#### Saga Status Response\n```json\n{\n  \"saga_id\": \"saga-20240101120000-abc123\",\n  \"status\": \"executing\",\n  \"steps\": [\n    {\n      \"id\": \"validate-user\",\n      \"name\": \"Validate User\",\n      \"status\": \"completed\"\n    },\n    {\n      \"id\": \"validate-template\",\n      \"name\": \"Validate Template\",\n      \"status\": \"executing\"\n    }\n  ],\n  \"created_at\": \"2024-01-01T12:00:00Z\",\n  \"updated_at\": \"2024-01-01T12:00:30Z\"\n}\n```\n\n#### Saga Progress Response\n```json\n{\n  \"saga_id\": \"saga-20240101120000-abc123\",\n  \"status\": \"executing\",\n  \"total_steps\": 6,\n  \"completed_steps\": 2,\n  \"failed_steps\": 0,\n  \"compensated_steps\": 0,\n  \"progress_percent\": 33.33,\n  \"created_at\": \"2024-01-01T12:00:00Z\",\n  \"updated_at\": \"2024-01-01T12:00:30Z\"\n}\n```\n\n## Test Scenarios\n\n### 1. Happy Path - Successful Report Creation\n1. Register user\n2. Login user\n3. Create template\n4. Create report via Saga\n5. Monitor Saga progress\n6. Verify report completion\n\n### 2. Error Handling - Failed Saga\n1. Create report with invalid template_id\n2. Monitor Saga failure\n3. Retry failed Saga\n4. Verify successful completion\n\n### 3. Saga Cancellation\n1. Start long-running Saga\n2. Cancel Saga before completion\n3. Verify compensation executed\n4. Check Saga status\n\n### 4. Idempotency Testing\n1. Create same report multiple times\n2. Verify only one Saga created\n3. Check duplicate prevention\n\n### 5. Performance Testing\n1. Create multiple reports simultaneously\n2. Monitor Saga execution times\n3. Verify system stability\n\n## Troubleshooting\n\n### Частые проблемы\n\n1. **401 Unauthorized**\n   - Проверьте JWT токен\n   - Убедитесь, что токен не истек\n\n2. **404 Not Found**\n   - Проверьте правильность ID ресурсов\n   - Убедитесь, что ресурс существует\n\n3. **500 Internal Server Error**\n   - Проверьте логи сервисов\n   - Убедитесь, что все зависимости запущены\n\n### Логи и отладка\n\nДля отладки Saga используйте:\n- `GET /api/v1/sagas/{id}` - детальная информация о Saga\n- `GET /api/v1/sagas/{id}/progress` - прогресс выполнения\n- Логи сервисов для детальной диагностики\n\n## Конфигурация\n\nУбедитесь, что все сервисы запущены с правильными переменными окружения:\n\n```bash\n# RabbitMQ URL для асинхронного взаимодействия\nRABBITMQ_URL=amqp://admin:password@rabbitmq:5672/\n\n# Database URL для каждого сервиса\nDATABASE_URL=postgres://postgres:password@postgres:5432/report_microservices?sslmode=disable\n\n# JWT Secret для авторизации\nJWT_SECRET=your-secret-key-change-in-production\n```",
+		"description": "# Report Microservices API - Complete Collection\n\n## Описание\n\nЭта Postman коллекция предназначена для тестирования всех API endpoints микросервисов генерации отчетов через API Gateway с использованием localhost и Saga паттерна.\n\n## Настройка доступа\n\nДля работы с коллекцией необходимо настроить port-forward для API Gateway:\n\n```bash\n# API Gateway\nkubectl port-forward service/api-gateway-service 80:80 -n api-gateway &\n```\n\n## Структура коллекции\n\n### 1. API Gateway\n- **Health Check** - проверка состояния API Gateway\n\n### 2. User Service (через API Gateway)\n- **Register User** - регистрация нового пользователя\n- **Login User** - авторизация пользователя\n- **Get User Profile** - получение профиля пользователя\n\n### 3. Template Service (через API Gateway)\n- **Create Template** - создание шаблона отчета\n- **Get Templates** - получение списка шаблонов\n- **Get Template by ID** - получение шаблона по ID\n\n### 4. Report Service (через API Gateway)\n- **Create Report (Saga)** - создание отчета через Saga\n- **Get Reports** - получение списка отчетов\n- **Get Report by ID** - получение отчета по ID\n- **Generate Report** - генерация отчета\n\n### 5. Data Service (через API Gateway)\n- **Create Data Source** - создание источника данных\n- **Get Data Sources** - получение списка источников данных\n- **Collect Data** - сбор данных\n\n### 6. Notification Service (через API Gateway)\n- **Send Notification** - отправка уведомления\n- **Get Notifications** - получение списка уведомлений\n\n### 7. Storage Service (через API Gateway)\n- **Upload File** - загрузка файла\n- **Download File** - скачивание файла\n- **List Files** - список файлов\n\n## Переменные окружения\n\nКоллекция использует следующие переменные:\n\n- `base_url` - базовый URL (http://localhost)\n- `jwt_token` - JWT токен для авторизации\n- `template_id` - ID шаблона\n- `report_id` - ID отчета\n- `file_id` - ID файла\n\n## Автоматизация\n\n### Pre-request Scripts\n- Автоматическая установка базового URL\n- Извлечение JWT токена из ответа логина\n\n### Test Scripts\n- Проверка времени ответа (< 5000ms)\n- Проверка Content-Type\n- Автоматическое сохранение ID для последующих запросов\n\n## Примеры использования\n\n### 1. Полный цикл создания отчета через Saga\n\n```bash\n# 1. Регистрация пользователя\nPOST http://arch.homework/api/v1/users/register\n{\n  \"name\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}\n\n# 2. Авторизация\nPOST http://arch.homework/api/v1/users/login\n{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}\n\n# 3. Создание шаблона\nPOST http://arch.homework/api/v1/templates\n{\n  \"name\": \"Monthly Sales Report\",\n  \"description\": \"Template for monthly sales reports\",\n  \"content\": \"SELECT * FROM sales WHERE month = '{{month}}'\",\n  \"type\": \"html\",\n  \"category\": \"sales\",\n  \"variables\": \"{\\\"month\\\": {\\\"type\\\": \\\"string\\\", \\\"required\\\": true}}\"\n}\n\n# 4. Создание отчета через Saga\nPOST http://arch.homework/api/v1/reports\n{\n  \"template_id\": 1,\n  \"name\": \"Отчет за январь 2024\",\n  \"description\": \"Ежемесячный отчет по продажам\",\n  \"parameters\": {\n    \"month\": \"2024-01\"\n  }\n}\n```\n\n## Test Data Examples\n\n### User Registration Data\n```json\n{\n  \"name\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}\n```\n\n### Template Creation Data\n```json\n{\n  \"name\": \"Monthly Sales Report\",\n  \"description\": \"Template for monthly sales reports\",\n  \"content\": \"SELECT * FROM sales WHERE month = '{{month}}'\",\n  \"type\": \"html\",\n  \"category\": \"sales\",\n  \"variables\": \"{\\\"month\\\": {\\\"type\\\": \\\"string\\\", \\\"required\\\": true}}\"\n}\n```\n\n### Report Creation Data (Saga)\n```json\n{\n  \"template_id\": 1,\n  \"name\": \"Отчет за январь 2024\",\n  \"description\": \"Ежемесячный отчет по продажам\",\n  \"parameters\": {\n    \"month\": \"2024-01\"\n  }\n}\n```\n\n## Test Scenarios\n\n### 1. Happy Path - Successful Report Creation\n1. Register user\n2. Login user\n3. Create template\n4. Create report via Saga\n5. Monitor report status\n6. Verify report completion\n\n### 2. Error Handling - Failed Report\n1. Create report with invalid template_id\n2. Monitor report failure\n3. Retry failed report\n4. Verify successful completion\n\n### 3. Idempotency Testing\n1. Create same report multiple times\n2. Verify only one report created\n3. Check duplicate prevention\n\n## Troubleshooting\n\n### Частые проблемы\n\n1. **401 Unauthorized**\n   - Проверьте JWT токен\n   - Убедитесь, что токен не истек\n\n2. **404 Not Found**\n   - Проверьте правильность ID ресурсов\n   - Убедитесь, что ресурс существует\n\n3. **500 Internal Server Error**\n   - Проверьте логи сервисов\n   - Убедитесь, что все зависимости запущены\n\n### Логи и отладка\n\nДля отладки используйте:\n- Логи API Gateway для диагностики маршрутизации\n- Логи микросервисов для детальной диагностики\n- Grafana дашборды для мониторинга производительности",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -15,13 +15,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://arch.homework:8080/health",
+							"raw": "http://arch.homework/health",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"health"
 							]
@@ -31,7 +30,7 @@
 			]
 		},
 		{
-			"name": "User Service (via Gateway)",
+			"name": "User Service (Direct)",
 			"item": [
 				{
 					"name": "Register User",
@@ -45,16 +44,15 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+							"raw": "{\n  \"name\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
 						},
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/users/register",
+							"raw": "http://arch.homework/api/v1/users/register",
 							"protocol": "http",
 							"host": [
-								"arch",
-								"homework"
+								"localhost"
 							],
-							"port": "8080",
+							"port": "8081",
 							"path": [
 								"api",
 								"v1",
@@ -79,13 +77,12 @@
 							"raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
 						},
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/users/login",
+							"raw": "http://arch.homework/api/v1/users/login",
 							"protocol": "http",
 							"host": [
-								"arch",
-								"homework"
+								"localhost"
 							],
-							"port": "8080",
+							"port": "8081",
 							"path": [
 								"api",
 								"v1",
@@ -106,13 +103,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/users/profile",
+							"raw": "http://arch.homework/api/v1/users/profile",
 							"protocol": "http",
 							"host": [
-								"arch",
-								"homework"
+								"localhost"
 							],
-							"port": "8080",
+							"port": "8081",
 							"path": [
 								"api",
 								"v1",
@@ -146,13 +142,12 @@
 							"raw": "{\n  \"name\": \"Monthly Sales Report\",\n  \"description\": \"Template for monthly sales reports\",\n  \"content\": \"SELECT * FROM sales WHERE month = '{{month}}'\",\n  \"parameters\": [\n    {\n      \"name\": \"month\",\n      \"type\": \"string\",\n      \"required\": true,\n      \"description\": \"Month in YYYY-MM format\"\n    }\n  ]\n}"
 						},
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/templates",
+							"raw": "http://arch.homework/api/v1/templates",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -172,13 +167,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/templates?page=1&limit=10",
+							"raw": "http://arch.homework/api/v1/templates?page=1&limit=10",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -208,13 +202,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/templates/{{template_id}}",
+							"raw": "http://arch.homework/api/v1/templates/{{template_id}}",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -248,13 +241,12 @@
 							"raw": "{\n  \"name\": \"January 2024 Sales Report\",\n  \"description\": \"Monthly sales report for January 2024\",\n  \"template_id\": {{template_id}},\n  \"parameters\": \"{\\\"month\\\": \\\"2024-01\\\"}\"\n}"
 						},
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/reports",
+							"raw": "http://arch.homework/api/v1/reports",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -302,13 +294,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/reports?page=1&limit=10",
+							"raw": "http://arch.homework/api/v1/reports?page=1&limit=10",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -338,13 +329,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/reports/{{report_id}}",
+							"raw": "http://arch.homework/api/v1/reports/{{report_id}}",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -365,13 +355,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/reports/{{report_id}}/status",
+							"raw": "http://arch.homework/api/v1/reports/{{report_id}}/status",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -425,13 +414,12 @@
 							"raw": "{\n  \"parameters\": {\n    \"month\": \"2024-01\"\n  }\n}"
 						},
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/reports/generate",
+							"raw": "http://arch.homework/api/v1/reports/generate",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -465,13 +453,12 @@
 							"raw": "{\n  \"name\": \"Sales Database\",\n  \"type\": \"postgresql\",\n  \"connection_string\": \"postgres://user:pass@localhost:5432/sales\",\n  \"description\": \"Main sales database\"\n}"
 						},
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/data-sources",
+							"raw": "http://arch.homework/api/v1/data-sources",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -491,13 +478,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/data-sources",
+							"raw": "http://arch.homework/api/v1/data-sources",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -525,13 +511,12 @@
 							"raw": "{\n  \"data_source_id\": 1,\n  \"query\": \"SELECT * FROM sales WHERE month = '2024-01'\",\n  \"parameters\": {\n    \"month\": \"2024-01\"\n  }\n}"
 						},
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/data/collect",
+							"raw": "http://arch.homework/api/v1/data/collect",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -565,13 +550,12 @@
 							"raw": "{\n  \"user_id\": 1,\n  \"type\": \"email\",\n  \"subject\": \"Report Ready\",\n  \"message\": \"Your report is ready for download\",\n  \"recipient\": \"user@example.com\"\n}"
 						},
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/notifications",
+							"raw": "http://arch.homework/api/v1/notifications",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -591,13 +575,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/notifications?page=1&limit=10",
+							"raw": "http://arch.homework/api/v1/notifications?page=1&limit=10",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -647,13 +630,12 @@
 							]
 						},
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/storage/upload",
+							"raw": "http://arch.homework/api/v1/storage/upload",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -674,13 +656,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/storage/download/{{file_id}}",
+							"raw": "http://arch.homework/api/v1/storage/download/{{file_id}}",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -702,13 +683,12 @@
 							}
 						],
 						"url": {
-							"raw": "http://arch.homework:8080/api/v1/storage/files?page=1&limit=10",
+							"raw": "http://arch.homework/api/v1/storage/files?page=1&limit=10",
 							"protocol": "http",
 							"host": [
 								"arch",
 								"homework"
 							],
-							"port": "8080",
 							"path": [
 								"api",
 								"v1",
@@ -738,7 +718,7 @@
 				"type": "text/javascript",
 				"exec": [
 					"// Установка переменных окружения",
-					"pm.environment.set('base_url', 'http://arch.homework');",
+					"pm.environment.set('base_url', 'http://localhost');",
 					"",
 					"// Автоматическое извлечение JWT токена из ответа логина",
 					"if (pm.info.requestName === 'Login User') {",
@@ -816,7 +796,7 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://arch.homework",
+			"value": "http://localhost",
 			"type": "string"
 		},
 		{

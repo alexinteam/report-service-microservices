@@ -62,10 +62,10 @@ func (h *GatewayHandler) ProxyToStorageService(c *gin.Context) {
 func (h *GatewayHandler) proxyRequest(c *gin.Context, targetURL string) {
 	path := c.Param("path")
 	if path == "" {
-		path = "/"
+		path = c.Request.URL.Path
 	}
 
-	fullURL := targetURL + "/api/v1" + path
+	fullURL := targetURL + path
 
 	if c.Request.URL.RawQuery != "" {
 		fullURL += "?" + c.Request.URL.RawQuery
