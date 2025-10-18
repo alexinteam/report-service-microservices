@@ -14,6 +14,7 @@ import (
 	"report-service/internal/events"
 	"report-service/internal/handlers"
 	"report-service/internal/jwt"
+	"report-service/internal/metrics"
 	"report-service/internal/middleware"
 	"report-service/internal/repository"
 	"report-service/internal/services"
@@ -134,6 +135,10 @@ func (s *Server) Start() error {
 // setupRouter настраивает маршруты и middleware
 func (s *Server) setupRouter(reportService *services.ReportService, jwtManager *jwt.Manager, sagaCoordinator *events.IdempotentSagaCoordinator, sagaStateStore *events.SagaStateStore) *gin.Engine {
 	router := gin.Default()
+
+	// Инициализация метрик
+	serviceMetrics := metrics.NewMetrics("report-service")
+	serviceMetrics.SetupMetricsEndpoint(router, "report-service")
 
 	// Middleware
 	router.Use(middleware.Logger())

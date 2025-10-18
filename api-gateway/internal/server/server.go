@@ -12,6 +12,7 @@ import (
 	"api-gateway/internal/config"
 	"api-gateway/internal/handlers"
 	"api-gateway/internal/jwt"
+	"api-gateway/internal/metrics"
 	"api-gateway/internal/middleware"
 
 	"github.com/gin-gonic/gin"
@@ -22,12 +23,15 @@ type Server struct {
 	config  *config.Config
 	handler *handlers.GatewayHandler
 	router  *gin.Engine
+	metrics *metrics.Metrics
 }
 
 func NewServer(cfg *config.Config) *Server {
 	gatewayHandler := handlers.NewGatewayHandler(cfg)
-
 	jwtManager := jwt.NewManager(cfg.JWTSecret)
+
+	// Инициализация метрик
+	serviceMetrics := metrics.NewMetrics("api-gateway")
 
 	router := gin.Default()
 
@@ -39,12 +43,16 @@ func NewServer(cfg *config.Config) *Server {
 	router.Use(middleware.Metrics())
 	router.Use(middleware.Timeout(30 * time.Second))
 
+	// Настройка метрик
+	serviceMetrics.SetupMetricsEndpoint(router, "api-gateway")
+
 	setupRoutes(router, gatewayHandler, jwtManager)
 
 	return &Server{
 		config:  cfg,
 		handler: gatewayHandler,
 		router:  router,
+		metrics: serviceMetrics,
 	}
 }
 

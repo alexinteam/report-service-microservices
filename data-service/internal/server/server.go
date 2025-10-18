@@ -13,6 +13,7 @@ import (
 	"data-service/internal/database"
 	"data-service/internal/handlers"
 	"data-service/internal/jwt"
+	"data-service/internal/metrics"
 	"data-service/internal/middleware"
 	"data-service/internal/repository"
 	"data-service/internal/services"
@@ -80,6 +81,10 @@ func (s *Server) Start() error {
 
 func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
 	router := gin.Default()
+
+	// Инициализация метрик
+	serviceMetrics := metrics.NewMetrics("data-service")
+	serviceMetrics.SetupMetricsEndpoint(router, "data-service")
 
 	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())

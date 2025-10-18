@@ -1,0 +1,498 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: system
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: "admin123"
+        - name: GF_USERS_ALLOW_SIGN_UP
+          value: "false"
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+        - name: grafana-datasources
+          mountPath: /etc/grafana/provisioning/datasources
+        - name: grafana-dashboards
+          mountPath: /etc/grafana/provisioning/dashboards
+        resources:
+          requests:
+            cpu: 250m
+            memory: 250M
+          limits:
+            cpu: 500m
+            memory: 500M
+      volumes:
+      - name: grafana-storage
+        emptyDir: {}
+      - name: grafana-datasources
+        configMap:
+          name: grafana-datasources
+      - name: grafana-dashboards
+        configMap:
+          name: grafana-dashboards
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+  namespace: system
+  labels:
+    app: grafana
+spec:
+  selector:
+    app: grafana
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: system
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: localhost
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana-service
+            port:
+              number: 80
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: system
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-service:80
+        isDefault: true
+        editable: true
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: system
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards
+
+  microservices-overview.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Microservices Overview",
+        "tags": ["microservices"],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "HTTP Requests Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total[5m])) by (service)",
+                "legendFormat": "{{service}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "requests/sec"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "id": 2,
+            "title": "HTTP Response Time",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) by (service)",
+                "legendFormat": "{{service}} 95th percentile"
+              },
+              {
+                "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket[5m])) by (service)",
+                "legendFormat": "{{service}} 50th percentile"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "seconds"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 0
+            }
+          },
+          {
+            "id": 3,
+            "title": "Error Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{status_code!~\"2..\"}[5m])) by (service)",
+                "legendFormat": "{{service}} errors"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "errors/sec"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 8
+            }
+          },
+          {
+            "id": 4,
+            "title": "Active Connections",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(http_requests_in_flight) by (service)",
+                "legendFormat": "{{service}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "connections"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 8
+            }
+          },
+          {
+            "id": 5,
+            "title": "Service Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up",
+                "legendFormat": "{{job}}"
+              }
+            ],
+            "gridPos": {
+              "h": 4,
+              "w": 24,
+              "x": 0,
+              "y": 16
+            }
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "5s"
+      }
+    }
+
+  business-metrics.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Business Metrics",
+        "tags": ["business"],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Business Operations Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(business_operations_total[5m])) by (service, operation)",
+                "legendFormat": "{{service}} - {{operation}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "operations/sec"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "id": 2,
+            "title": "Business Operation Duration",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(business_operation_duration_seconds_bucket[5m])) by (service, operation)",
+                "legendFormat": "{{service}} - {{operation}} 95th percentile"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "seconds"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 0
+            }
+          },
+          {
+            "id": 3,
+            "title": "Database Query Duration",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(database_query_duration_seconds_bucket[5m])) by (service, operation)",
+                "legendFormat": "{{service}} - {{operation}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "seconds"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 8
+            }
+          },
+          {
+            "id": 4,
+            "title": "Database Errors",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(database_errors_total[5m])) by (service, operation)",
+                "legendFormat": "{{service}} - {{operation}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "errors/sec"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 8
+            }
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "5s"
+      }
+    }
+
+  saga-metrics.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Saga Metrics",
+        "tags": ["saga"],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Saga Operations Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(saga_operations_total[5m])) by (service, saga_type, step)",
+                "legendFormat": "{{service}} - {{saga_type}} - {{step}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "operations/sec"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 0,
+              "y": 0
+            }
+          },
+          {
+            "id": 2,
+            "title": "Saga Operation Duration",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(saga_operation_duration_seconds_bucket[5m])) by (service, saga_type, step)",
+                "legendFormat": "{{service}} - {{saga_type}} - {{step}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "seconds"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 12,
+              "x": 12,
+              "y": 0
+            }
+          },
+          {
+            "id": 3,
+            "title": "Saga State Changes",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(saga_state_changes_total[5m])) by (service, saga_type, from_state, to_state)",
+                "legendFormat": "{{service}} - {{saga_type}} {{from_state}} -> {{to_state}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "changes/sec"
+              }
+            ],
+            "xAxes": [
+              {
+                "type": "time"
+              }
+            ],
+            "gridPos": {
+              "h": 8,
+              "w": 24,
+              "x": 0,
+              "y": 8
+            }
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "5s"
+      }
+    }

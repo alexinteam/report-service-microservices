@@ -13,6 +13,7 @@ import (
 	"user-service/internal/database"
 	"user-service/internal/handlers"
 	"user-service/internal/jwt"
+	"user-service/internal/metrics"
 	"user-service/internal/middleware"
 	"user-service/internal/repository"
 	"user-service/internal/services"
@@ -81,6 +82,10 @@ func (s *Server) Start() error {
 
 func (s *Server) setupRouter(userService *services.UserService, jwtManager *jwt.Manager) *gin.Engine {
 	router := gin.Default()
+
+	// Инициализация метрик
+	serviceMetrics := metrics.NewMetrics("user-service")
+	serviceMetrics.SetupMetricsEndpoint(router, "user-service")
 
 	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())

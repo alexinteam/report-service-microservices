@@ -13,6 +13,7 @@ import (
 	"notification-service/internal/database"
 	"notification-service/internal/handlers"
 	"notification-service/internal/jwt"
+	"notification-service/internal/metrics"
 	"notification-service/internal/middleware"
 	"notification-service/internal/repository"
 	"notification-service/internal/services"
@@ -93,6 +94,10 @@ func (s *Server) Start() error {
 // setupRouter настраивает маршруты и middleware
 func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
 	router := gin.Default()
+
+	// Инициализация метрик
+	serviceMetrics := metrics.NewMetrics("notification-service")
+	serviceMetrics.SetupMetricsEndpoint(router, "notification-service")
 
 	// Middleware
 	router.Use(middleware.Logger())
