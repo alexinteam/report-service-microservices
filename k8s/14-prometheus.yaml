@@ -18,122 +18,37 @@ data:
         static_configs:
           - targets: ['localhost:9090']
 
-      # API Gateway
-      - job_name: 'api-gateway'
-        kubernetes_sd_configs:
-          - role: endpoints
-            namespaces:
-              names:
-                - api-gateway
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_service_name]
-            action: keep
-            regex: api-gateway-service
-          - source_labels: [__meta_kubernetes_endpoint_port_name]
-            action: keep
-            regex: http
-        metrics_path: /metrics
-        scrape_interval: 10s
-
-      # User Service
-      - job_name: 'user-service'
-        kubernetes_sd_configs:
-          - role: endpoints
-            namespaces:
-              names:
-                - user-service
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_service_name]
-            action: keep
-            regex: user-service-service
-          - source_labels: [__meta_kubernetes_endpoint_port_name]
-            action: keep
-            regex: http
-        metrics_path: /metrics
-        scrape_interval: 10s
-
-      # Template Service
-      - job_name: 'template-service'
-        kubernetes_sd_configs:
-          - role: endpoints
-            namespaces:
-              names:
-                - template-service
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_service_name]
-            action: keep
-            regex: template-service-service
-          - source_labels: [__meta_kubernetes_endpoint_port_name]
-            action: keep
-            regex: http
-        metrics_path: /metrics
-        scrape_interval: 10s
-
-      # Report Service
-      - job_name: 'report-service'
-        kubernetes_sd_configs:
-          - role: endpoints
-            namespaces:
-              names:
-                - report-service
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_service_name]
-            action: keep
-            regex: report-service-service
-          - source_labels: [__meta_kubernetes_endpoint_port_name]
-            action: keep
-            regex: http
-        metrics_path: /metrics
-        scrape_interval: 10s
-
-      # Data Service
-      - job_name: 'data-service'
-        kubernetes_sd_configs:
-          - role: endpoints
-            namespaces:
-              names:
-                - data-service
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_service_name]
-            action: keep
-            regex: data-service-service
-          - source_labels: [__meta_kubernetes_endpoint_port_name]
-            action: keep
-            regex: http
-        metrics_path: /metrics
-        scrape_interval: 10s
-
-      # Notification Service
-      - job_name: 'notification-service'
-        kubernetes_sd_configs:
-          - role: endpoints
-            namespaces:
-              names:
-                - notification-service
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_service_name]
-            action: keep
-            regex: notification-service-service
-          - source_labels: [__meta_kubernetes_endpoint_port_name]
-            action: keep
-            regex: http
-        metrics_path: /metrics
-        scrape_interval: 10s
-
-      # Storage Service
-      - job_name: 'storage-service'
-        kubernetes_sd_configs:
-          - role: endpoints
-            namespaces:
-              names:
-                - storage-service
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_service_name]
-            action: keep
-            regex: storage-service-service
-          - source_labels: [__meta_kubernetes_endpoint_port_name]
-            action: keep
-            regex: http
+      # Микросервисы - статическая конфигурация для надежности
+      - job_name: 'microservices'
+        static_configs:
+          # User Service
+          - targets: ['user-service-service.user-service.svc.cluster.local:8081']
+            labels:
+              service: 'user-service'
+          # Template Service  
+          - targets: ['template-service-service.template-service.svc.cluster.local:8082']
+            labels:
+              service: 'template-service'
+          # Data Service
+          - targets: ['data-service-service.data-service.svc.cluster.local:8083']
+            labels:
+              service: 'data-service'
+          # Report Service
+          - targets: ['report-service-service.report-service.svc.cluster.local:8084']
+            labels:
+              service: 'report-service'
+          # Notification Service
+          - targets: ['notification-service-service.notification-service.svc.cluster.local:8085']
+            labels:
+              service: 'notification-service'
+          # Storage Service
+          - targets: ['storage-service-service.storage-service.svc.cluster.local:8086']
+            labels:
+              service: 'storage-service'
+          # API Gateway
+          - targets: ['api-gateway-service.api-gateway.svc.cluster.local:8080']
+            labels:
+              service: 'api-gateway'
         metrics_path: /metrics
         scrape_interval: 10s
 
