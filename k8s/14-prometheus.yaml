@@ -42,11 +42,11 @@ data:
             labels:
               service: 'notification-service'
           # Storage Service
-          - targets: ['storage-service-service.storage-service.svc.cluster.local:8086']
+          - targets: ['storage-service-service.storage-service.svc.cluster.local:8087']
             labels:
               service: 'storage-service'
           # API Gateway
-          - targets: ['api-gateway-service.api-gateway.svc.cluster.local:8080']
+          - targets: ['api-gateway-service.api-gateway.svc.cluster.local:80']
             labels:
               service: 'api-gateway'
         metrics_path: /metrics

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"strings"
 
 	"api-gateway/internal/config"
 
@@ -66,6 +67,18 @@ func (h *GatewayHandler) proxyRequest(c *gin.Context, targetURL string) {
 		path = c.Request.URL.Path
 	} else {
 		path = c.Request.URL.Path
+	}
+
+	if path == "/api/v1/data-sources" || path == "/api/v1/storage/files" {
+		path += "/"
+	}
+
+	if strings.HasPrefix(path, "/api/v1/storage/") {
+		path = strings.Replace(path, "/api/v1/storage/", "/api/v1/", 1)
+	}
+
+	if path == "/api/v1/files" {
+		path += "/"
 	}
 
 	fullURL := targetURL + path

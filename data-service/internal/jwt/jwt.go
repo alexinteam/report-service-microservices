@@ -8,7 +8,7 @@ import (
 )
 
 type Manager struct {
-	secretKey string
+	secretKey []byte
 }
 
 type Claims struct {
@@ -21,7 +21,7 @@ type Claims struct {
 
 func NewManager(secretKey string) *Manager {
 	return &Manager{
-		secretKey: secretKey,
+		secretKey: []byte(secretKey),
 	}
 }
 
@@ -39,7 +39,7 @@ func (m *Manager) GenerateToken(userID uint, name, email, role string) (string, 
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(m.secretKey))
+	return token.SignedString(m.secretKey)
 }
 
 func (m *Manager) ValidateToken(tokenString string) (*Claims, error) {
@@ -47,7 +47,7 @@ func (m *Manager) ValidateToken(tokenString string) (*Claims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("неожиданный метод подписи")
 		}
-		return []byte(m.secretKey), nil
+		return m.secretKey, nil
 	})
 
 	if err != nil {

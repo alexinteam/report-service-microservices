@@ -62,7 +62,7 @@
         "type": "timeseries",
         "targets": [
           {
-            "expr": "sum(rate(business_operations_total{success=\"true\"}[5m])) by (service, operation) / sum(rate(business_operations_total[5m])) by (service, operation) * 100",
+            "expr": "sum(business_operations_total{status=\"success\"}) by (service, operation)",
             "legendFormat": "{{service}} - {{operation}}"
           }
         ],
