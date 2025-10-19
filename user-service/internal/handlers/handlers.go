@@ -3,7 +3,9 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	"user-service/internal/metrics"
 	"user-service/internal/models"
 	"user-service/internal/services"
 
@@ -13,17 +15,21 @@ import (
 
 type UserHandler struct {
 	userService *services.UserService
+	metrics     *metrics.Metrics
 }
 
-func NewUserHandler(userService *services.UserService) *UserHandler {
+func NewUserHandler(userService *services.UserService, metrics *metrics.Metrics) *UserHandler {
 	return &UserHandler{
 		userService: userService,
+		metrics:     metrics,
 	}
 }
 
 func (h *UserHandler) Register(c *gin.Context) {
+	start := time.Now()
 	var req models.UserCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.metrics.RecordBusinessOperation("user-service", "register", time.Since(start), false)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -31,16 +37,20 @@ func (h *UserHandler) Register(c *gin.Context) {
 	user, err := h.userService.CreateUser(&req)
 	if err != nil {
 		logrus.WithError(err).Error("Ошибка создания пользователя")
+		h.metrics.RecordBusinessOperation("user-service", "register", time.Since(start), false)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	h.metrics.RecordBusinessOperation("user-service", "register", time.Since(start), true)
 	c.JSON(http.StatusCreated, user)
 }
 
 func (h *UserHandler) Login(c *gin.Context) {
+	start := time.Now()
 	var req models.UserLoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.metrics.RecordBusinessOperation("user-service", "login", time.Since(start), false)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -48,10 +58,12 @@ func (h *UserHandler) Login(c *gin.Context) {
 	response, err := h.userService.Login(&req)
 	if err != nil {
 		logrus.WithError(err).Error("Ошибка авторизации")
+		h.metrics.RecordBusinessOperation("user-service", "login", time.Since(start), false)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Неверные учетные данные"})
 		return
 	}
 
+	h.metrics.RecordBusinessOperation("user-service", "login", time.Since(start), true)
 	c.JSON(http.StatusOK, response)
 }
 

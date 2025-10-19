@@ -3,7 +3,9 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	"notification-service/internal/metrics"
 	"notification-service/internal/models"
 	"notification-service/internal/services"
 
@@ -13,18 +15,22 @@ import (
 
 type NotificationTemplateHandler struct {
 	templateService *services.NotificationTemplateService
+	metrics         *metrics.Metrics
 }
 
-func NewNotificationTemplateHandler(templateService *services.NotificationTemplateService) *NotificationTemplateHandler {
+func NewNotificationTemplateHandler(templateService *services.NotificationTemplateService, metrics *metrics.Metrics) *NotificationTemplateHandler {
 	return &NotificationTemplateHandler{
 		templateService: templateService,
+		metrics:         metrics,
 	}
 }
 
 // CreateTemplate создание нового шаблона уведомления
 func (h *NotificationTemplateHandler) CreateTemplate(c *gin.Context) {
+	start := time.Now()
 	var req models.NotificationTemplateCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.metrics.RecordBusinessOperation("notification-service", "create_template", time.Since(start), false)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -32,10 +38,12 @@ func (h *NotificationTemplateHandler) CreateTemplate(c *gin.Context) {
 	template, err := h.templateService.CreateTemplate(&req)
 	if err != nil {
 		logrus.WithError(err).Error("Ошибка создания шаблона уведомления")
+		h.metrics.RecordBusinessOperation("notification-service", "create_template", time.Since(start), false)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	h.metrics.RecordBusinessOperation("notification-service", "create_template", time.Since(start), true)
 	c.JSON(http.StatusCreated, template)
 }
 

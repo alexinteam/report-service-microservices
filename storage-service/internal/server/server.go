@@ -48,8 +48,9 @@ func (s *Server) Start() error {
 	}
 
 	jwtManager := jwt.NewManager(s.cfg.JWTSecret)
+	metricsManager := metrics.NewMetrics("storage-service")
 
-	router := s.setupRouter(db, jwtManager)
+	router := s.setupRouter(db, jwtManager, metricsManager)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.cfg.Port),
@@ -79,12 +80,11 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
+func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager, metricsManager *metrics.Metrics) *gin.Engine {
 	router := gin.Default()
 
 	// Инициализация метрик
-	serviceMetrics := metrics.NewMetrics("storage-service")
-	serviceMetrics.SetupMetricsEndpoint(router, "storage-service")
+	metricsManager.SetupMetricsEndpoint(router, "storage-service")
 
 	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())
@@ -95,7 +95,7 @@ func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
 
 	fileService := services.NewFileService(fileRepo, s.cfg.StoragePath)
 
-	fileHandler := handlers.NewFileHandler(fileService)
+	fileHandler := handlers.NewFileHandler(fileService, metricsManager)
 
 	s.setupRoutes(router, fileHandler, jwtManager)
 

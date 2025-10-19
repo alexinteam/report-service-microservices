@@ -129,15 +129,18 @@ setup_monitoring() {
         # Создаем дашборды и генерируем тестовые данные
         print_status "Настраиваем мониторинг..."
         if [ -f "monitoring.sh" ]; then
-            ./monitoring.sh dashboards
-            ./monitoring.sh test
+            # Переходим в корневую директорию для правильных путей к дашбордам
+            cd ..
+            ./scripts/monitoring.sh dashboards
+            ./scripts/monitoring.sh test
+            cd scripts
             print_success "Мониторинг настроен"
         else
             print_warning "Скрипт мониторинга не найден"
         fi
     else
         print_warning "Grafana не готова, дашборды будут созданы позже"
-        print_status "Для создания дашбордов выполните: cd scripts && ./create-dashboards.sh"
+        print_status "Для создания дашбордов выполните: cd .. && ./scripts/monitoring.sh dashboards"
     fi
 }
 

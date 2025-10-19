@@ -276,3 +276,25 @@ func (h *SagaHandler) ListSagas(c *gin.Context) {
 		},
 	})
 }
+
+// ForceCompleteSaga принудительно завершает Saga
+func (h *SagaHandler) ForceCompleteSaga(c *gin.Context) {
+	sagaID := c.Param("id")
+	if sagaID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Saga ID required"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	if err := h.sagaCoordinator.ForceCompleteSaga(ctx, sagaID); err != nil {
+		logrus.WithError(err).Errorf("Ошибка принудительного завершения Saga %s", sagaID)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка завершения Saga"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Saga принудительно завершена",
+		"saga_id": sagaID,
+		"status":  "completed",
+	})
+}

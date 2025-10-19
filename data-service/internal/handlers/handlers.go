@@ -3,7 +3,9 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	"data-service/internal/metrics"
 	"data-service/internal/models"
 	"data-service/internal/services"
 
@@ -13,17 +15,21 @@ import (
 
 type DataSourceHandler struct {
 	dataSourceService *services.DataSourceService
+	metrics           *metrics.Metrics
 }
 
-func NewDataSourceHandler(dataSourceService *services.DataSourceService) *DataSourceHandler {
+func NewDataSourceHandler(dataSourceService *services.DataSourceService, metrics *metrics.Metrics) *DataSourceHandler {
 	return &DataSourceHandler{
 		dataSourceService: dataSourceService,
+		metrics:           metrics,
 	}
 }
 
 func (h *DataSourceHandler) CreateDataSource(c *gin.Context) {
+	start := time.Now()
 	var req models.DataSourceCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.metrics.RecordBusinessOperation("data-service", "create_data_source", time.Since(start), false)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -31,14 +37,17 @@ func (h *DataSourceHandler) CreateDataSource(c *gin.Context) {
 	dataSource, err := h.dataSourceService.CreateDataSource(&req)
 	if err != nil {
 		logrus.WithError(err).Error("Ошибка создания источника данных")
+		h.metrics.RecordBusinessOperation("data-service", "create_data_source", time.Since(start), false)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	h.metrics.RecordBusinessOperation("data-service", "create_data_source", time.Since(start), true)
 	c.JSON(http.StatusCreated, dataSource)
 }
 
 func (h *DataSourceHandler) GetDataSources(c *gin.Context) {
+	start := time.Now()
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	active := c.Query("active")
@@ -46,10 +55,12 @@ func (h *DataSourceHandler) GetDataSources(c *gin.Context) {
 	dataSources, total, err := h.dataSourceService.GetDataSources(page, limit, active)
 	if err != nil {
 		logrus.WithError(err).Error("Ошибка получения источников данных")
+		h.metrics.RecordBusinessOperation("data-service", "get_data_sources", time.Since(start), false)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	h.metrics.RecordBusinessOperation("data-service", "get_data_sources", time.Since(start), true)
 	c.JSON(http.StatusOK, models.DataSourcesResponse{
 		DataSources: dataSources,
 		Total:       total,

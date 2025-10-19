@@ -3,7 +3,9 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
+	"template-service/internal/metrics"
 	"template-service/internal/models"
 	"template-service/internal/services"
 
@@ -13,18 +15,22 @@ import (
 
 type TemplateHandler struct {
 	templateService *services.TemplateService
+	metrics         *metrics.Metrics
 }
 
-func NewTemplateHandler(templateService *services.TemplateService) *TemplateHandler {
+func NewTemplateHandler(templateService *services.TemplateService, metrics *metrics.Metrics) *TemplateHandler {
 	return &TemplateHandler{
 		templateService: templateService,
+		metrics:         metrics,
 	}
 }
 
 // CreateTemplate создание нового шаблона
 func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
+	start := time.Now()
 	var req models.TemplateCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.metrics.RecordBusinessOperation("template-service", "create_template", time.Since(start), false)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -32,15 +38,18 @@ func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
 	template, err := h.templateService.CreateTemplate(&req)
 	if err != nil {
 		logrus.WithError(err).Error("Ошибка создания шаблона")
+		h.metrics.RecordBusinessOperation("template-service", "create_template", time.Since(start), false)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	h.metrics.RecordBusinessOperation("template-service", "create_template", time.Since(start), true)
 	c.JSON(http.StatusCreated, template)
 }
 
 // GetTemplates получение списка шаблонов
 func (h *TemplateHandler) GetTemplates(c *gin.Context) {
+	start := time.Now()
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	category := c.Query("category")
@@ -49,10 +58,12 @@ func (h *TemplateHandler) GetTemplates(c *gin.Context) {
 	templates, total, err := h.templateService.GetTemplates(page, limit, category, active)
 	if err != nil {
 		logrus.WithError(err).Error("Ошибка получения шаблонов")
+		h.metrics.RecordBusinessOperation("template-service", "get_templates", time.Since(start), false)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	h.metrics.RecordBusinessOperation("template-service", "get_templates", time.Since(start), true)
 	c.JSON(http.StatusOK, models.TemplatesResponse{
 		Templates: templates,
 		Total:     total,

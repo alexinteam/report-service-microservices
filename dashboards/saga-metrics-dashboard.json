@@ -12,8 +12,8 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "sum(rate(saga_transactions_started_total[5m])) by (saga_type)",
-            "legendFormat": "{{saga_type}}"
+            "expr": "sum(rate(business_operations_total{operation=\"saga_started\"}[5m])) by (exported_service)",
+            "legendFormat": "{{exported_service}}"
           }
         ],
         "fieldConfig": {
@@ -37,8 +37,8 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "sum(rate(saga_transactions_completed_total[5m])) by (saga_type)",
-            "legendFormat": "{{saga_type}}"
+            "expr": "sum(rate(business_operations_total{operation=\"saga_completed\"}[5m])) by (exported_service)",
+            "legendFormat": "{{exported_service}}"
           }
         ],
         "fieldConfig": {
@@ -62,8 +62,8 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "sum(rate(saga_transactions_failed_total[5m])) by (saga_type)",
-            "legendFormat": "{{saga_type}}"
+            "expr": "sum(rate(business_operations_total{operation=\"saga_failed\"}[5m])) by (exported_service)",
+            "legendFormat": "{{exported_service}}"
           }
         ],
         "fieldConfig": {
@@ -87,8 +87,8 @@
         "type": "timeseries",
         "targets": [
           {
-            "expr": "sum(rate(saga_step_executions_total[5m])) by (saga_type, step_name)",
-            "legendFormat": "{{saga_type}} - {{step_name}}"
+            "expr": "sum(rate(business_operations_total{operation=~\"saga_.*\"}[5m])) by (exported_service, operation)",
+            "legendFormat": "{{exported_service}} - {{operation}}"
           }
         ],
         "fieldConfig": {
@@ -112,8 +112,8 @@
         "type": "timeseries",
         "targets": [
           {
-            "expr": "sum(rate(saga_compensations_total[5m])) by (saga_type)",
-            "legendFormat": "{{saga_type}}"
+            "expr": "sum(rate(business_operations_total{operation=\"saga_compensated\"}[5m])) by (exported_service)",
+            "legendFormat": "{{exported_service}}"
           }
         ],
         "fieldConfig": {
@@ -133,17 +133,17 @@
       },
       {
         "id": 6,
-        "title": "Saga Duration",
+        "title": "Saga Operations Summary",
         "type": "timeseries",
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(rate(saga_duration_seconds_bucket[5m])) by (le, saga_type))",
-            "legendFormat": "{{saga_type}}"
+            "expr": "sum(business_operations_total{operation=~\"saga_.*\"}) by (exported_service, operation)",
+            "legendFormat": "{{exported_service}} - {{operation}}"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "unit": "s",
+            "unit": "short",
             "color": {
               "mode": "palette-classic"
             }
@@ -161,6 +161,6 @@
       "from": "now-1h",
       "to": "now"
     },
-    "refresh": "5s"
+    "refresh": "30s"
   }
 }

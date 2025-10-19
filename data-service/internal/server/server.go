@@ -48,8 +48,9 @@ func (s *Server) Start() error {
 	}
 
 	jwtManager := jwt.NewManager(s.cfg.JWTSecret)
+	metricsManager := metrics.NewMetrics("data-service")
 
-	router := s.setupRouter(db, jwtManager)
+	router := s.setupRouter(db, jwtManager, metricsManager)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.cfg.Port),
@@ -79,12 +80,11 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
+func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager, metricsManager *metrics.Metrics) *gin.Engine {
 	router := gin.Default()
 
 	// Инициализация метрик
-	serviceMetrics := metrics.NewMetrics("data-service")
-	serviceMetrics.SetupMetricsEndpoint(router, "data-service")
+	metricsManager.SetupMetricsEndpoint(router, "data-service")
 
 	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())
@@ -99,7 +99,7 @@ func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
 	dataCollectionService := services.NewDataCollectionService(dataCollectionRepo)
 	collectDataService := services.NewCollectDataService(dataRecordRepo)
 
-	dataSourceHandler := handlers.NewDataSourceHandler(dataSourceService)
+	dataSourceHandler := handlers.NewDataSourceHandler(dataSourceService, metricsManager)
 	dataCollectionHandler := handlers.NewDataCollectionHandler(dataCollectionService)
 	collectDataHandler := handlers.NewCollectDataHandler(collectDataService)
 

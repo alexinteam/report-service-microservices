@@ -251,11 +251,11 @@ create_all_dashboards() {
     log "Создание всех дашбордов..."
     
     local dashboards=(
-        "../dashboards/microservices-overview-dashboard.json:Microservices Overview"
-        "../dashboards/business-metrics-dashboard.json:Business Metrics"
-        "../dashboards/saga-metrics-dashboard.json:Saga Metrics"
-        "../dashboards/service-details-dashboard.json:Service Details"
-        "../dashboards/alerts-health-dashboard.json:Alerts & Health"
+        "dashboards/microservices-overview-dashboard.json:Microservices Overview"
+        "dashboards/business-metrics-dashboard.json:Business Metrics"
+        "dashboards/saga-metrics-dashboard.json:Saga Metrics"
+        "dashboards/service-details-dashboard.json:Service Details"
+        "dashboards/alerts-health-dashboard.json:Alerts & Health"
     )
     
     local success_count=0

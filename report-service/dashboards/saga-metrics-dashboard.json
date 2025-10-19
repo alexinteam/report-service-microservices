@@ -1,24 +1,24 @@
 {
   "dashboard": {
     "id": null,
-    "title": "Microservices Overview",
-    "tags": ["microservices", "overview"],
+    "title": "Saga Metrics",
+    "tags": ["saga", "transactions"],
     "style": "dark",
     "timezone": "browser",
     "panels": [
       {
         "id": 1,
-        "title": "HTTP Requests Rate",
+        "title": "Saga Transactions Started",
         "type": "stat",
         "targets": [
           {
-            "expr": "sum(rate(http_requests_total[5m])) by (service)",
-            "legendFormat": "{{service}}"
+            "expr": "business_operations_total{operation=\"saga_started\"}",
+            "legendFormat": "Saga Started"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "unit": "reqps",
+            "unit": "short",
             "color": {
               "mode": "palette-classic"
             }
@@ -26,24 +26,24 @@
         },
         "gridPos": {
           "h": 8,
-          "w": 12,
+          "w": 8,
           "x": 0,
           "y": 0
         }
       },
       {
         "id": 2,
-        "title": "HTTP Response Time",
+        "title": "Saga Transactions Completed",
         "type": "stat",
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))",
-            "legendFormat": "{{service}}"
+            "expr": "business_operations_total{operation=\"saga_completed\"}",
+            "legendFormat": "Saga Completed"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "unit": "s",
+            "unit": "short",
             "color": {
               "mode": "palette-classic"
             }
@@ -51,24 +51,49 @@
         },
         "gridPos": {
           "h": 8,
-          "w": 12,
-          "x": 12,
+          "w": 8,
+          "x": 8,
           "y": 0
         }
       },
       {
         "id": 3,
-        "title": "HTTP Requests by Status Code",
-        "type": "timeseries",
+        "title": "Saga Transactions Failed",
+        "type": "stat",
         "targets": [
           {
-            "expr": "sum(rate(http_requests_total[5m])) by (status_code, service)",
-            "legendFormat": "{{service}} - {{status_code}}"
+            "expr": "business_operations_total{operation=\"saga_failed\"}",
+            "legendFormat": "Saga Failed"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "unit": "reqps",
+            "unit": "short",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 16,
+          "y": 0
+        }
+      },
+      {
+        "id": 4,
+        "title": "Saga Operations Timeline",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "business_operations_total{operation=~\"saga_.*\"}",
+            "legendFormat": "{{operation}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
             "color": {
               "mode": "palette-classic"
             }
@@ -82,18 +107,18 @@
         }
       },
       {
-        "id": 4,
-        "title": "Service Health",
-        "type": "timeseries",
+        "id": 5,
+        "title": "Saga Success Rate",
+        "type": "stat",
         "targets": [
           {
-            "expr": "up{job=\"microservices\"}",
-            "legendFormat": "{{service}}"
+            "expr": "business_operations_total{operation=\"saga_completed\"} / business_operations_total{operation=\"saga_started\"} * 100",
+            "legendFormat": "Success Rate %"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "unit": "short",
+            "unit": "percent",
             "color": {
               "mode": "palette-classic"
             }
@@ -107,26 +132,18 @@
         }
       },
       {
-        "id": 5,
-        "title": "Memory Usage",
+        "id": 6,
+        "title": "Saga Operations Summary",
         "type": "timeseries",
         "targets": [
           {
-            "expr": "go_memory_classes_heap_objects_bytes / (1024*1024)",
-            "legendFormat": "{{instance}} - Heap Objects (MB)"
-          },
-          {
-            "expr": "go_memory_classes_heap_free_bytes / (1024*1024)",
-            "legendFormat": "{{instance}} - Heap Free (MB)"
-          },
-          {
-            "expr": "go_memory_classes_heap_stacks_bytes / (1024*1024)",
-            "legendFormat": "{{instance}} - Stack (MB)"
+            "expr": "business_operations_total{operation=~\"saga_.*\"}",
+            "legendFormat": "{{operation}}"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "unit": "MB",
+            "unit": "short",
             "color": {
               "mode": "palette-classic"
             }
@@ -144,6 +161,6 @@
       "from": "now-1h",
       "to": "now"
     },
-    "refresh": "5s"
+    "refresh": "30s"
   }
 }

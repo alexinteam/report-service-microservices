@@ -48,8 +48,9 @@ func (s *Server) Start() error {
 	}
 
 	jwtManager := jwt.NewManager(s.cfg.JWTSecret)
+	metricsManager := metrics.NewMetrics("template-service")
 
-	router := s.setupRouter(db, jwtManager)
+	router := s.setupRouter(db, jwtManager, metricsManager)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.cfg.Port),
@@ -79,12 +80,11 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
+func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager, metricsManager *metrics.Metrics) *gin.Engine {
 	router := gin.Default()
 
 	// Инициализация метрик
-	serviceMetrics := metrics.NewMetrics("template-service")
-	serviceMetrics.SetupMetricsEndpoint(router, "template-service")
+	metricsManager.SetupMetricsEndpoint(router, "template-service")
 
 	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())
@@ -95,11 +95,11 @@ func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
 	categoryRepo := repository.NewTemplateCategoryRepository(db)
 	variableRepo := repository.NewTemplateVariableRepository(db)
 
-	templateService := services.NewTemplateService(templateRepo)
+	templateService := services.NewTemplateService(templateRepo, metricsManager)
 	categoryService := services.NewTemplateCategoryService(categoryRepo)
 	variableService := services.NewTemplateVariableService(variableRepo)
 
-	templateHandler := handlers.NewTemplateHandler(templateService)
+	templateHandler := handlers.NewTemplateHandler(templateService, metricsManager)
 	categoryHandler := handlers.NewTemplateCategoryHandler(categoryService)
 	variableHandler := handlers.NewTemplateVariableHandler(variableService)
 

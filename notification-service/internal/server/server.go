@@ -55,9 +55,10 @@ func (s *Server) Start() error {
 
 	// Инициализация зависимостей
 	jwtManager := jwt.NewManager(s.cfg.JWTSecret)
+	metricsManager := metrics.NewMetrics("notification-service")
 
 	// Создание роутера
-	router := s.setupRouter(db, jwtManager)
+	router := s.setupRouter(db, jwtManager, metricsManager)
 
 	// Создание HTTP сервера
 	srv := &http.Server{
@@ -92,12 +93,11 @@ func (s *Server) Start() error {
 }
 
 // setupRouter настраивает маршруты и middleware
-func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
+func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager, metricsManager *metrics.Metrics) *gin.Engine {
 	router := gin.Default()
 
 	// Инициализация метрик
-	serviceMetrics := metrics.NewMetrics("notification-service")
-	serviceMetrics.SetupMetricsEndpoint(router, "notification-service")
+	metricsManager.SetupMetricsEndpoint(router, "notification-service")
 
 	// Middleware
 	router.Use(middleware.Logger())
@@ -116,7 +116,7 @@ func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager) *gin.Engine {
 	channelService := services.NewNotificationChannelService(channelRepo)
 
 	// Инициализация обработчиков
-	templateHandler := handlers.NewNotificationTemplateHandler(templateService)
+	templateHandler := handlers.NewNotificationTemplateHandler(templateService, metricsManager)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	channelHandler := handlers.NewNotificationChannelHandler(channelService)
 

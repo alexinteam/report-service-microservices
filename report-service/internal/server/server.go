@@ -57,6 +57,7 @@ func (s *Server) Start() error {
 	reportRepo := repository.NewReportRepository(db)
 	reportService := services.NewReportService(reportRepo)
 	jwtManager := jwt.NewManager(s.cfg.JWTSecret)
+	metricsManager := metrics.NewMetrics("report-service")
 
 	// Инициализация Saga компонентов
 	sagaStateStore := events.NewSagaStateStore(db)
@@ -79,7 +80,7 @@ func (s *Server) Start() error {
 
 	// Создание идемпотентного Saga Coordinator
 	sagaStepHandler := handlers.NewSagaStepHandler(reportService)
-	sagaCoordinator := events.NewIdempotentSagaCoordinator(eventPublisher, sagaStateStore, sagaStepHandler)
+	sagaCoordinator := events.NewIdempotentSagaCoordinator(eventPublisher, sagaStateStore, sagaStepHandler, metricsManager)
 
 	// Запуск Outbox Publisher для надежной публикации событий
 	if outboxManager != nil {
@@ -98,7 +99,7 @@ func (s *Server) Start() error {
 	}
 
 	// Создание роутера
-	router := s.setupRouter(reportService, jwtManager, sagaCoordinator, sagaStateStore)
+	router := s.setupRouter(reportService, jwtManager, sagaCoordinator, sagaStateStore, metricsManager)
 
 	// Создание HTTP сервера
 	srv := &http.Server{
@@ -133,12 +134,11 @@ func (s *Server) Start() error {
 }
 
 // setupRouter настраивает маршруты и middleware
-func (s *Server) setupRouter(reportService *services.ReportService, jwtManager *jwt.Manager, sagaCoordinator *events.IdempotentSagaCoordinator, sagaStateStore *events.SagaStateStore) *gin.Engine {
+func (s *Server) setupRouter(reportService *services.ReportService, jwtManager *jwt.Manager, sagaCoordinator *events.IdempotentSagaCoordinator, sagaStateStore *events.SagaStateStore, metricsManager *metrics.Metrics) *gin.Engine {
 	router := gin.Default()
 
 	// Инициализация метрик
-	serviceMetrics := metrics.NewMetrics("report-service")
-	serviceMetrics.SetupMetricsEndpoint(router, "report-service")
+	metricsManager.SetupMetricsEndpoint(router, "report-service")
 
 	// Middleware
 	router.Use(middleware.Logger())
@@ -147,7 +147,7 @@ func (s *Server) setupRouter(reportService *services.ReportService, jwtManager *
 	router.Use(middleware.RequestID())
 
 	// Инициализация обработчиков
-	reportHandler := handlers.NewReportHandler(reportService, sagaCoordinator)
+	reportHandler := handlers.NewReportHandler(reportService, sagaCoordinator, metricsManager)
 	sagaHandler := handlers.NewSagaHandler(sagaCoordinator, sagaStateStore)
 
 	// Настройка маршрутов
@@ -192,6 +192,7 @@ func (s *Server) setupRoutes(router *gin.Engine, reportHandler *handlers.ReportH
 			saga.GET("/:id/progress", sagaHandler.GetSagaProgress)
 			saga.POST("/:id/retry", sagaHandler.RetrySaga)
 			saga.DELETE("/:id", sagaHandler.CancelSaga)
+			saga.POST("/:id/force-complete", sagaHandler.ForceCompleteSaga)
 			saga.GET("/", sagaHandler.ListSagas)
 		}
 	}

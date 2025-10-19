@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"report-service/internal/metrics"
 )
 
 // IdempotentSagaCoordinator управляет Saga с идемпотентностью
@@ -14,6 +16,7 @@ type IdempotentSagaCoordinator struct {
 	maxRetries  int
 	retryDelay  time.Duration
 	stepHandler SagaStepHandlerInterface
+	metrics     *metrics.Metrics
 }
 
 // SagaStepHandlerInterface интерфейс для обработки шагов Saga
@@ -23,13 +26,14 @@ type SagaStepHandlerInterface interface {
 }
 
 // NewIdempotentSagaCoordinator создает новый идемпотентный Saga Coordinator
-func NewIdempotentSagaCoordinator(publisher EventPublisher, stateStore *SagaStateStore, stepHandler SagaStepHandlerInterface) *IdempotentSagaCoordinator {
+func NewIdempotentSagaCoordinator(publisher EventPublisher, stateStore *SagaStateStore, stepHandler SagaStepHandlerInterface, metrics *metrics.Metrics) *IdempotentSagaCoordinator {
 	return &IdempotentSagaCoordinator{
 		publisher:   publisher,
 		stateStore:  stateStore,
 		maxRetries:  3,
 		retryDelay:  5 * time.Second,
 		stepHandler: stepHandler,
+		metrics:     metrics,
 	}
 }
 
@@ -60,6 +64,9 @@ func (sc *IdempotentSagaCoordinator) StartSaga(ctx context.Context, saga *Saga) 
 	if err := sc.stateStore.SaveSagaState(ctx, saga); err != nil {
 		return fmt.Errorf("ошибка сохранения состояния Saga: %w", err)
 	}
+
+	// Записываем метрику начала Saga
+	sc.metrics.RecordBusinessOperation("report-service", "saga_started", time.Since(time.Now()), true)
 
 	// Публикуем событие начала Saga
 	event := NewEvent(SagaStarted, "report-service", map[string]interface{}{
@@ -372,15 +379,38 @@ func (sc *IdempotentSagaCoordinator) handleSagaStarted(ctx context.Context, even
 
 func (sc *IdempotentSagaCoordinator) handleSagaCompleted(ctx context.Context, event *Event) error {
 	log.Printf("Обработка события SagaCompleted для Saga %s", event.Data["saga_id"])
+	// Записываем метрику завершения Saga
+	sc.metrics.RecordBusinessOperation("report-service", "saga_completed", time.Since(time.Now()), true)
 	return nil
 }
 
 func (sc *IdempotentSagaCoordinator) handleSagaFailed(ctx context.Context, event *Event) error {
 	log.Printf("Обработка события SagaFailed для Saga %s", event.Data["saga_id"])
+	// Записываем метрику неудачного завершения Saga
+	sc.metrics.RecordBusinessOperation("report-service", "saga_failed", time.Since(time.Now()), false)
 	return nil
 }
 
 func (sc *IdempotentSagaCoordinator) handleSagaCompensated(ctx context.Context, event *Event) error {
 	log.Printf("Обработка события SagaCompensated для Saga %s", event.Data["saga_id"])
+	// Записываем метрику компенсации Saga
+	sc.metrics.RecordBusinessOperation("report-service", "saga_compensated", time.Since(time.Now()), true)
+	return nil
+}
+
+// ForceCompleteSaga принудительно завершает Saga
+func (sc *IdempotentSagaCoordinator) ForceCompleteSaga(ctx context.Context, sagaID string) error {
+	log.Printf("Принудительное завершение Saga %s", sagaID)
+
+	// Обновляем статус Saga на Completed
+	if err := sc.UpdateSagaStatus(ctx, sagaID, SagaStatusCompleted); err != nil {
+		log.Printf("Ошибка обновления статуса Saga на Completed: %v", err)
+		return err
+	}
+
+	// Записываем метрику завершения Saga
+	sc.metrics.RecordBusinessOperation("report-service", "saga_completed", time.Since(time.Now()), true)
+
+	log.Printf("Saga %s принудительно завершена", sagaID)
 	return nil
 }

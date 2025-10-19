@@ -30,11 +30,11 @@ data:
             labels:
               service: 'template-service'
           # Data Service
-          - targets: ['data-service-service.data-service.svc.cluster.local:8083']
+          - targets: ['data-service-service.data-service.svc.cluster.local:8084']
             labels:
               service: 'data-service'
           # Report Service
-          - targets: ['report-service-service.report-service.svc.cluster.local:8084']
+          - targets: ['report-service-service.report-service.svc.cluster.local:8083']
             labels:
               service: 'report-service'
           # Notification Service

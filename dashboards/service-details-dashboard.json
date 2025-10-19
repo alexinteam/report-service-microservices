@@ -128,13 +128,21 @@
         "type": "timeseries",
         "targets": [
           {
-            "expr": "memory_usage_bytes{service=~\"$service\"} / (1024*1024*1024)",
-            "legendFormat": "{{service}}"
+            "expr": "go_memory_classes_heap_objects_bytes{service=~\"$service\"} / (1024*1024)",
+            "legendFormat": "{{instance}} - Heap Objects (MB)"
+          },
+          {
+            "expr": "go_memory_classes_heap_free_bytes{service=~\"$service\"} / (1024*1024)",
+            "legendFormat": "{{instance}} - Heap Free (MB)"
+          },
+          {
+            "expr": "go_memory_classes_heap_stacks_bytes{service=~\"$service\"} / (1024*1024)",
+            "legendFormat": "{{instance}} - Stack (MB)"
           }
         ],
         "fieldConfig": {
           "defaults": {
-            "unit": "GB",
+            "unit": "MB",
             "color": {
               "mode": "palette-classic"
             }

@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
+	"storage-service/internal/metrics"
 	"storage-service/internal/models"
 	"storage-service/internal/services"
 
@@ -16,18 +18,22 @@ import (
 
 type FileHandler struct {
 	fileService *services.FileService
+	metrics     *metrics.Metrics
 }
 
-func NewFileHandler(fileService *services.FileService) *FileHandler {
+func NewFileHandler(fileService *services.FileService, metrics *metrics.Metrics) *FileHandler {
 	return &FileHandler{
 		fileService: fileService,
+		metrics:     metrics,
 	}
 }
 
 // UploadFile загрузка файла
 func (h *FileHandler) UploadFile(c *gin.Context) {
+	start := time.Now()
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
+		h.metrics.RecordBusinessOperation("storage-service", "upload_file", time.Since(start), false)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Файл не найден"})
 		return
 	}
@@ -58,10 +64,12 @@ func (h *FileHandler) UploadFile(c *gin.Context) {
 	result, err := h.fileService.UploadFile(req, header.Filename, content, hash)
 	if err != nil {
 		logrus.WithError(err).Error("Ошибка загрузки файла")
+		h.metrics.RecordBusinessOperation("storage-service", "upload_file", time.Since(start), false)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	h.metrics.RecordBusinessOperation("storage-service", "upload_file", time.Since(start), true)
 	c.JSON(http.StatusCreated, result)
 }
 

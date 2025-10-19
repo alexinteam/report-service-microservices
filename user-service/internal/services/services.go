@@ -3,8 +3,10 @@ package services
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"user-service/internal/jwt"
+	"user-service/internal/metrics"
 	"user-service/internal/models"
 	"user-service/internal/repository"
 
@@ -15,21 +17,26 @@ import (
 type UserService struct {
 	userRepo   *repository.UserRepository
 	jwtManager *jwt.Manager
+	metrics    *metrics.Metrics
 }
 
-func NewUserService(userRepo *repository.UserRepository, jwtManager *jwt.Manager) *UserService {
+func NewUserService(userRepo *repository.UserRepository, jwtManager *jwt.Manager, metrics *metrics.Metrics) *UserService {
 	return &UserService{
 		userRepo:   userRepo,
 		jwtManager: jwtManager,
+		metrics:    metrics,
 	}
 }
 
 // CreateUser создает нового пользователя
 func (s *UserService) CreateUser(req *models.UserCreateRequest) (*models.UserResponse, error) {
+	start := time.Now()
 	exists, err := s.userRepo.IsEmailExists(req.Email)
 	if err != nil {
+		s.metrics.RecordDatabaseOperation("user-service", "check_email_exists", time.Since(start), err)
 		return nil, fmt.Errorf("ошибка проверки email: %w", err)
 	}
+	s.metrics.RecordDatabaseOperation("user-service", "check_email_exists", time.Since(start), nil)
 	if exists {
 		return nil, errors.New("пользователь с таким email уже существует")
 	}
@@ -57,8 +64,10 @@ func (s *UserService) CreateUser(req *models.UserCreateRequest) (*models.UserRes
 	}
 
 	if err := s.userRepo.Create(user); err != nil {
+		s.metrics.RecordDatabaseOperation("user-service", "create_user", time.Since(start), err)
 		return nil, fmt.Errorf("ошибка создания пользователя: %w", err)
 	}
+	s.metrics.RecordDatabaseOperation("user-service", "create_user", time.Since(start), nil)
 
 	response := user.ToResponse()
 	return &response, nil
@@ -66,13 +75,16 @@ func (s *UserService) CreateUser(req *models.UserCreateRequest) (*models.UserRes
 
 // Login авторизует пользователя
 func (s *UserService) Login(req *models.UserLoginRequest) (*models.LoginResponse, error) {
+	start := time.Now()
 	user, err := s.userRepo.GetByEmail(req.Email)
 	if err != nil {
+		s.metrics.RecordDatabaseOperation("user-service", "get_user_by_email", time.Since(start), err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("пользователь не найден")
 		}
 		return nil, fmt.Errorf("ошибка получения пользователя: %w", err)
 	}
+	s.metrics.RecordDatabaseOperation("user-service", "get_user_by_email", time.Since(start), nil)
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, errors.New("неверный пароль")

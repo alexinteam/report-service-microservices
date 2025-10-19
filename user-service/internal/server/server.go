@@ -48,9 +48,10 @@ func (s *Server) Start() error {
 
 	userRepo := repository.NewUserRepository(db)
 	jwtManager := jwt.NewManager(s.cfg.JWTSecret)
-	userService := services.NewUserService(userRepo, jwtManager)
+	metricsManager := metrics.NewMetrics("user-service")
+	userService := services.NewUserService(userRepo, jwtManager, metricsManager)
 
-	router := s.setupRouter(userService, jwtManager)
+	router := s.setupRouter(userService, jwtManager, metricsManager)
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.cfg.Port),
@@ -80,19 +81,18 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) setupRouter(userService *services.UserService, jwtManager *jwt.Manager) *gin.Engine {
+func (s *Server) setupRouter(userService *services.UserService, jwtManager *jwt.Manager, metricsManager *metrics.Metrics) *gin.Engine {
 	router := gin.Default()
 
 	// Инициализация метрик
-	serviceMetrics := metrics.NewMetrics("user-service")
-	serviceMetrics.SetupMetricsEndpoint(router, "user-service")
+	metricsManager.SetupMetricsEndpoint(router, "user-service")
 
 	router.Use(middleware.Logger())
 	router.Use(middleware.Recovery())
 	router.Use(middleware.CORS())
 	router.Use(middleware.RequestID())
 
-	userHandler := handlers.NewUserHandler(userService)
+	userHandler := handlers.NewUserHandler(userService, metricsManager)
 
 	s.setupRoutes(router, userHandler, jwtManager)
 

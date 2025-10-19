@@ -3,8 +3,10 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"report-service/internal/events"
+	"report-service/internal/metrics"
 	"report-service/internal/models"
 	"report-service/internal/services"
 
@@ -16,26 +18,31 @@ import (
 type ReportHandler struct {
 	reportService   *services.ReportService
 	sagaCoordinator *events.IdempotentSagaCoordinator
+	metrics         *metrics.Metrics
 }
 
 // NewReportHandler создает новый обработчик отчетов
-func NewReportHandler(reportService *services.ReportService, sagaCoordinator *events.IdempotentSagaCoordinator) *ReportHandler {
+func NewReportHandler(reportService *services.ReportService, sagaCoordinator *events.IdempotentSagaCoordinator, metrics *metrics.Metrics) *ReportHandler {
 	return &ReportHandler{
 		reportService:   reportService,
 		sagaCoordinator: sagaCoordinator,
+		metrics:         metrics,
 	}
 }
 
 // CreateReport создание нового отчета через Saga (асинхронно)
 func (h *ReportHandler) CreateReport(c *gin.Context) {
+	start := time.Now()
 	userID, exists := c.Get("user_id")
 	if !exists {
+		h.metrics.RecordBusinessOperation("report-service", "create_report", time.Since(start), false)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Пользователь не авторизован"})
 		return
 	}
 
 	var req models.ReportCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.metrics.RecordBusinessOperation("report-service", "create_report", time.Since(start), false)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -70,6 +77,7 @@ func (h *ReportHandler) CreateReport(c *gin.Context) {
 		}
 	}()
 
+	h.metrics.RecordBusinessOperation("report-service", "create_report", time.Since(start), true)
 	c.JSON(http.StatusAccepted, models.ReportCreateResponse{
 		ID:      report.ID,
 		Status:  string(models.StatusPending),

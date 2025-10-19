@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
+	"template-service/internal/metrics"
 	"template-service/internal/models"
 	"template-service/internal/repository"
 
@@ -13,16 +15,19 @@ import (
 
 type TemplateService struct {
 	templateRepo *repository.TemplateRepository
+	metrics      *metrics.Metrics
 }
 
-func NewTemplateService(templateRepo *repository.TemplateRepository) *TemplateService {
+func NewTemplateService(templateRepo *repository.TemplateRepository, metrics *metrics.Metrics) *TemplateService {
 	return &TemplateService{
 		templateRepo: templateRepo,
+		metrics:      metrics,
 	}
 }
 
 // CreateTemplate создает новый шаблон
 func (s *TemplateService) CreateTemplate(req *models.TemplateCreateRequest) (*models.TemplateResponse, error) {
+	start := time.Now()
 	template := &models.Template{
 		Name:        req.Name,
 		Description: req.Description,
@@ -34,8 +39,10 @@ func (s *TemplateService) CreateTemplate(req *models.TemplateCreateRequest) (*mo
 	}
 
 	if err := s.templateRepo.Create(template); err != nil {
+		s.metrics.RecordDatabaseOperation("template-service", "create_template", time.Since(start), err)
 		return nil, fmt.Errorf("ошибка создания шаблона: %w", err)
 	}
+	s.metrics.RecordDatabaseOperation("template-service", "create_template", time.Since(start), nil)
 
 	response := template.ToResponse()
 	return &response, nil
