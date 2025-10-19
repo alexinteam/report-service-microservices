@@ -121,6 +121,7 @@ func (s *Server) setupRoutes(router *gin.Engine, templateHandler *handlers.Templ
 	api := router.Group("/api/v1")
 	{
 		templates := api.Group("/templates")
+		templates.Use(middleware.Auth(jwtManager))
 		{
 			templates.POST("/", templateHandler.CreateTemplate)
 			templates.GET("/", templateHandler.GetTemplates)
@@ -132,6 +133,7 @@ func (s *Server) setupRoutes(router *gin.Engine, templateHandler *handlers.Templ
 		}
 
 		categories := api.Group("/categories")
+		categories.Use(middleware.Auth(jwtManager))
 		{
 			categories.POST("/", categoryHandler.CreateCategory)
 			categories.GET("/", categoryHandler.GetCategories)
@@ -141,6 +143,7 @@ func (s *Server) setupRoutes(router *gin.Engine, templateHandler *handlers.Templ
 		}
 
 		variables := api.Group("/variables")
+		variables.Use(middleware.Auth(jwtManager))
 		{
 			variables.POST("/", variableHandler.CreateVariable)
 			variables.GET("/", variableHandler.GetVariables)

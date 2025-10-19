@@ -131,7 +131,8 @@ func Auth(jwtManager *jwt.Manager) gin.HandlerFunc {
 
 		// Сохраняем информацию о пользователе в контексте
 		c.Set("user_id", claims.UserID)
-		c.Set("username", claims.Username)
+		c.Set("name", claims.Name)
+		c.Set("email", claims.Email)
 		c.Set("role", claims.Role)
 		c.Set("claims", claims)
 

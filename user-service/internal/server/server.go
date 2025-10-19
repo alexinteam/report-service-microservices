@@ -47,8 +47,8 @@ func (s *Server) Start() error {
 	}
 
 	userRepo := repository.NewUserRepository(db)
-	userService := services.NewUserService(userRepo)
 	jwtManager := jwt.NewManager(s.cfg.JWTSecret)
+	userService := services.NewUserService(userRepo, jwtManager)
 
 	router := s.setupRouter(userService, jwtManager)
 
@@ -118,6 +118,7 @@ func (s *Server) setupRoutes(router *gin.Engine, userHandler *handlers.UserHandl
 		}
 
 		protected := api.Group("/users")
+		protected.Use(middleware.Auth(jwtManager))
 		{
 			protected.GET("/profile", userHandler.GetProfile)
 			protected.PUT("/profile", userHandler.UpdateProfile)

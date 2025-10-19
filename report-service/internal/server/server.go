@@ -171,7 +171,7 @@ func (s *Server) setupRoutes(router *gin.Engine, reportHandler *handlers.ReportH
 	{
 		// Защищенные маршруты (требуют аутентификации)
 		protected := api.Group("/reports")
-		// protected.Use(middleware.AuthMiddleware(jwtManager))
+		protected.Use(middleware.Auth(jwtManager))
 		{
 			protected.POST("/", reportHandler.CreateReport)
 			protected.GET("/", reportHandler.GetReports)

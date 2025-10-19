@@ -105,13 +105,13 @@ func Auth(jwtManager *jwt.Manager) gin.HandlerFunc {
 		}
 
 		c.Set("user_id", claims.UserID)
-		c.Set("username", claims.Username)
+		c.Set("name", claims.Name)
 		c.Set("email", claims.Email)
 		c.Set("role", claims.Role)
 
 		logrus.WithFields(logrus.Fields{
 			"user_id":    claims.UserID,
-			"username":   claims.Username,
+			"name":       claims.Name,
 			"request_id": c.GetString("request_id"),
 		}).Debug("User authenticated")
 

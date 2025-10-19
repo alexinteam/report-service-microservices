@@ -13,9 +13,10 @@ type Manager struct {
 }
 
 type Claims struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID uint   `json:"user_id"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -25,19 +26,20 @@ func NewManager(secretKey string) *Manager {
 	}
 }
 
-func (m *Manager) GenerateToken(userID uint, username, role string) (string, error) {
+func (m *Manager) GenerateToken(userID uint, name, email, role string) (string, error) {
 	now := time.Now()
 	claims := Claims{
-		UserID:   userID,
-		Username: username,
-		Role:     role,
+		UserID: userID,
+		Name:   name,
+		Email:  email,
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        uuid.New().String(),
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
 			NotBefore: jwt.NewNumericDate(now),
 			Issuer:    "user-service",
-			Subject:   username,
+			Subject:   name,
 		},
 	}
 
@@ -74,7 +76,7 @@ func (m *Manager) RefreshToken(tokenString string) (string, error) {
 		return "", errors.New("токен слишком старый для обновления")
 	}
 
-	return m.GenerateToken(claims.UserID, claims.Username, claims.Role)
+	return m.GenerateToken(claims.UserID, claims.Name, claims.Email, claims.Role)
 }
 
 func (m *Manager) ExtractUserID(tokenString string) (uint, error) {
@@ -85,12 +87,12 @@ func (m *Manager) ExtractUserID(tokenString string) (uint, error) {
 	return claims.UserID, nil
 }
 
-func (m *Manager) ExtractUsername(tokenString string) (string, error) {
+func (m *Manager) ExtractName(tokenString string) (string, error) {
 	claims, err := m.ValidateToken(tokenString)
 	if err != nil {
 		return "", err
 	}
-	return claims.Username, nil
+	return claims.Name, nil
 }
 
 func (m *Manager) ExtractRole(tokenString string) (string, error) {

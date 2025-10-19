@@ -120,6 +120,7 @@ func (s *Server) setupRoutes(router *gin.Engine, dataSourceHandler *handlers.Dat
 	api := router.Group("/api/v1")
 	{
 		dataSources := api.Group("/data-sources")
+		dataSources.Use(middleware.Auth(jwtManager))
 		{
 			dataSources.POST("/", dataSourceHandler.CreateDataSource)
 			dataSources.GET("/", dataSourceHandler.GetDataSources)
@@ -129,6 +130,7 @@ func (s *Server) setupRoutes(router *gin.Engine, dataSourceHandler *handlers.Dat
 		}
 
 		dataCollections := api.Group("/data-collections")
+		dataCollections.Use(middleware.Auth(jwtManager))
 		{
 			dataCollections.POST("/", dataCollectionHandler.CreateDataCollection)
 			dataCollections.GET("/", dataCollectionHandler.GetDataCollections)
@@ -138,6 +140,7 @@ func (s *Server) setupRoutes(router *gin.Engine, dataSourceHandler *handlers.Dat
 		}
 
 		collect := api.Group("/collect")
+		collect.Use(middleware.Auth(jwtManager))
 		{
 			collect.POST("/", collectDataHandler.CollectData)
 			collect.GET("/records", collectDataHandler.GetDataRecords)

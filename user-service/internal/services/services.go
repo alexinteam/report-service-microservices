@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"user-service/internal/jwt"
 	"user-service/internal/models"
 	"user-service/internal/repository"
 
@@ -12,12 +13,14 @@ import (
 )
 
 type UserService struct {
-	userRepo *repository.UserRepository
+	userRepo   *repository.UserRepository
+	jwtManager *jwt.Manager
 }
 
-func NewUserService(userRepo *repository.UserRepository) *UserService {
+func NewUserService(userRepo *repository.UserRepository, jwtManager *jwt.Manager) *UserService {
 	return &UserService{
-		userRepo: userRepo,
+		userRepo:   userRepo,
+		jwtManager: jwtManager,
 	}
 }
 
@@ -79,9 +82,14 @@ func (s *UserService) Login(req *models.UserLoginRequest) (*models.LoginResponse
 		return nil, errors.New("пользователь деактивирован")
 	}
 
+	token, err := s.jwtManager.GenerateToken(user.ID, user.Name, user.Email, user.Role)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка генерации токена: %w", err)
+	}
+
 	response := &models.LoginResponse{
 		User:  user.ToResponse(),
-		Token: "dummy_token",
+		Token: token,
 	}
 
 	return response, nil

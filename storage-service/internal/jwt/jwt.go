@@ -13,6 +13,7 @@ type Manager struct {
 
 type Claims struct {
 	UserID uint   `json:"user_id"`
+	Name   string `json:"name"`
 	Email  string `json:"email"`
 	Role   string `json:"role"`
 	jwt.RegisteredClaims
@@ -24,9 +25,10 @@ func NewManager(secretKey string) *Manager {
 	}
 }
 
-func (m *Manager) GenerateToken(userID uint, email, role string) (string, error) {
+func (m *Manager) GenerateToken(userID uint, name, email, role string) (string, error) {
 	claims := Claims{
 		UserID: userID,
+		Name:   name,
 		Email:  email,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{

@@ -30,7 +30,7 @@
 			]
 		},
 		{
-			"name": "User Service (Direct)",
+			"name": "User Service (via API Gateway)",
 			"item": [
 				{
 					"name": "Register User",
@@ -50,9 +50,9 @@
 							"raw": "http://arch.homework/api/v1/users/register",
 							"protocol": "http",
 							"host": [
-								"localhost"
+								"arch",
+								"homework"
 							],
-							"port": "8081",
 							"path": [
 								"api",
 								"v1",
@@ -80,9 +80,9 @@
 							"raw": "http://arch.homework/api/v1/users/login",
 							"protocol": "http",
 							"host": [
-								"localhost"
+								"arch",
+								"homework"
 							],
-							"port": "8081",
 							"path": [
 								"api",
 								"v1",
@@ -106,9 +106,9 @@
 							"raw": "http://arch.homework/api/v1/users/profile",
 							"protocol": "http",
 							"host": [
-								"localhost"
+								"arch",
+								"homework"
 							],
-							"port": "8081",
 							"path": [
 								"api",
 								"v1",
@@ -121,7 +121,7 @@
 			]
 		},
 		{
-			"name": "Template Service (via Gateway)",
+			"name": "Template Service",
 			"item": [
 				{
 					"name": "Create Template",
@@ -220,7 +220,7 @@
 			]
 		},
 		{
-			"name": "Report Service (via Gateway)",
+			"name": "Report Service",
 			"item": [
 				{
 					"name": "Create Report (Async)",
@@ -432,7 +432,7 @@
 			]
 		},
 		{
-			"name": "Data Service (via Gateway)",
+			"name": "Data Service",
 			"item": [
 				{
 					"name": "Create Data Source",
@@ -529,7 +529,7 @@
 			]
 		},
 		{
-			"name": "Notification Service (via Gateway)",
+			"name": "Notification Service",
 			"item": [
 				{
 					"name": "Send Notification",
@@ -602,7 +602,7 @@
 			]
 		},
 		{
-			"name": "Storage Service (via Gateway)",
+			"name": "Storage Service",
 			"item": [
 				{
 					"name": "Upload File",

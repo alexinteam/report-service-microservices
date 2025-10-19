@@ -88,7 +88,7 @@ func (s *Server) Start() error {
 func setupRoutes(router *gin.Engine, gatewayHandler *handlers.GatewayHandler, jwtManager *jwt.Manager) {
 	router.GET("/health", gatewayHandler.Health)
 
-	// Публичные маршруты для аутентификации (БЕЗ middleware авторизации)
+	// Публичные маршруты для аутентификации (БЕЗ авторизации)
 	router.POST("/api/v1/users/register", gatewayHandler.ProxyToUserService)
 	router.POST("/api/v1/users/login", gatewayHandler.ProxyToUserService)
 
@@ -104,8 +104,9 @@ func setupRoutes(router *gin.Engine, gatewayHandler *handlers.GatewayHandler, jw
 		protected.Use(middleware.Auth(jwtManager))
 		{
 			// Проксирование запросов к микросервисам
-			// Убираем /users/*path так как у нас есть конкретные маршруты выше
+			protected.Any("/templates", gatewayHandler.ProxyToTemplateService)
 			protected.Any("/templates/*path", gatewayHandler.ProxyToTemplateService)
+			protected.Any("/reports", gatewayHandler.ProxyToReportService)
 			protected.Any("/reports/*path", gatewayHandler.ProxyToReportService)
 			protected.Any("/data-sources/*path", gatewayHandler.ProxyToDataService)
 			protected.Any("/data/*path", gatewayHandler.ProxyToDataService)
