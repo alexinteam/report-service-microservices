@@ -12,8 +12,8 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "sum(rate(business_operations_total{operation=\"saga_started\"}[5m])) by (exported_service)",
-            "legendFormat": "{{exported_service}}"
+            "expr": "sum(business_operations_total{operation=\"saga_started\"}) by (service)",
+            "legendFormat": "{{service}}"
           }
         ],
         "fieldConfig": {
@@ -37,8 +37,8 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "sum(rate(business_operations_total{operation=\"saga_completed\"}[5m])) by (exported_service)",
-            "legendFormat": "{{exported_service}}"
+            "expr": "sum(business_operations_total{operation=\"saga_completed\"}) by (service)",
+            "legendFormat": "{{service}}"
           }
         ],
         "fieldConfig": {
@@ -62,8 +62,8 @@
         "type": "stat",
         "targets": [
           {
-            "expr": "sum(rate(business_operations_total{operation=\"saga_failed\"}[5m])) by (exported_service)",
-            "legendFormat": "{{exported_service}}"
+            "expr": "sum(business_operations_total{operation=\"saga_failed\"}) by (service)",
+            "legendFormat": "{{service}}"
           }
         ],
         "fieldConfig": {
@@ -87,8 +87,8 @@
         "type": "timeseries",
         "targets": [
           {
-            "expr": "sum(rate(business_operations_total{operation=~\"saga_.*\"}[5m])) by (exported_service, operation)",
-            "legendFormat": "{{exported_service}} - {{operation}}"
+            "expr": "sum(rate(business_operations_total{operation=~\"saga_.*\"}[5m])) by (service, operation)",
+            "legendFormat": "{{service}} - {{operation}}"
           }
         ],
         "fieldConfig": {
@@ -112,8 +112,8 @@
         "type": "timeseries",
         "targets": [
           {
-            "expr": "sum(rate(business_operations_total{operation=\"saga_compensated\"}[5m])) by (exported_service)",
-            "legendFormat": "{{exported_service}}"
+            "expr": "sum(rate(business_operations_total{operation=\"saga_compensated\"}[5m])) by (service)",
+            "legendFormat": "{{service}}"
           }
         ],
         "fieldConfig": {
@@ -137,8 +137,8 @@
         "type": "timeseries",
         "targets": [
           {
-            "expr": "sum(business_operations_total{operation=~\"saga_.*\"}) by (exported_service, operation)",
-            "legendFormat": "{{exported_service}} - {{operation}}"
+            "expr": "sum(business_operations_total{operation=~\"saga_.*\"}) by (service, operation)",
+            "legendFormat": "{{service}} - {{operation}}"
           }
         ],
         "fieldConfig": {
