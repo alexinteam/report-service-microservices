@@ -185,7 +185,7 @@ func (s *Server) setupRoutes(router *gin.Engine, reportHandler *handlers.ReportH
 
 		// Saga маршруты
 		saga := api.Group("/sagas")
-		// saga.Use(middleware.AuthMiddleware(jwtManager))
+		saga.Use(middleware.Auth(jwtManager))
 		{
 			saga.POST("/reports", sagaHandler.CreateReportSaga)
 			saga.GET("/:id", sagaHandler.GetSagaStatus)
