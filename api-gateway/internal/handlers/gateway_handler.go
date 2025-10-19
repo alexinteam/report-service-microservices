@@ -8,6 +8,7 @@ import (
 	"api-gateway/internal/config"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type GatewayHandler struct {
@@ -63,6 +64,8 @@ func (h *GatewayHandler) proxyRequest(c *gin.Context, targetURL string) {
 	path := c.Param("path")
 	if path == "" {
 		path = c.Request.URL.Path
+	} else {
+		path = c.Request.URL.Path
 	}
 
 	fullURL := targetURL + path
@@ -70,6 +73,14 @@ func (h *GatewayHandler) proxyRequest(c *gin.Context, targetURL string) {
 	if c.Request.URL.RawQuery != "" {
 		fullURL += "?" + c.Request.URL.RawQuery
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"original_path":  c.Request.URL.Path,
+		"processed_path": path,
+		"target_url":     targetURL,
+		"full_url":       fullURL,
+		"method":         c.Request.Method,
+	}).Info("Proxying request")
 
 	var body io.Reader
 	if c.Request.Body != nil {
@@ -93,7 +104,11 @@ func (h *GatewayHandler) proxyRequest(c *gin.Context, targetURL string) {
 		}
 	}
 
-	client := &http.Client{}
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return nil
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "Ошибка проксирования запроса"})
