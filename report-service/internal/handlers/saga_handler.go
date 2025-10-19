@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"report-service/internal/events"
 
@@ -45,17 +46,35 @@ func (h *SagaHandler) CreateReportSaga(c *gin.Context) {
 	}
 
 	// Создаем идемпотентную Saga
-	saga := events.NewIdempotentReportCreationSaga(
+	idempotentSaga := events.NewIdempotentReportCreationSaga(
 		"0", // reportID будет создан позже
 		strconv.FormatUint(uint64(userID.(uint)), 10),
 		req.TemplateID,
 		req.Parameters,
 	)
 
-	// Запускаем Saga асинхронно
+	// Создаем обычную Saga для сохранения в базе данных
+	saga := &events.Saga{
+		ID:        idempotentSaga.ID,
+		Name:      "Idempotent Report Creation Saga",
+		Status:    events.SagaStatusPending,
+		Steps:     idempotentSaga.Steps,
+		Data:      map[string]interface{}{"template_id": req.TemplateID, "parameters": req.Parameters},
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Запускаем Saga и сохраняем состояние
+	ctx := c.Request.Context()
+	if err := h.sagaCoordinator.StartSaga(ctx, saga); err != nil {
+		logrus.WithError(err).Errorf("Ошибка запуска Saga %s", saga.ID)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания Saga"})
+		return
+	}
+
+	// Запускаем выполнение Saga асинхронно
 	go func() {
-		ctx := c.Request.Context()
-		if err := saga.Execute(ctx, h.sagaCoordinator); err != nil {
+		if err := idempotentSaga.Execute(ctx, h.sagaCoordinator); err != nil {
 			logrus.WithError(err).Errorf("Ошибка выполнения Saga %s", saga.ID)
 		}
 	}()
