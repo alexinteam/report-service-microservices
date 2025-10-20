@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1400" height="1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-family: Arial, sans-serif; font-size: 24px; font-weight: bold; text-anchor: middle; fill: #333; }
+      .subtitle { font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-anchor: middle; fill: #666; }
+      .label { font-family: Arial, sans-serif; font-size: 12px; text-anchor: middle; fill: #333; }
+      .small-label { font-family: Arial, sans-serif; font-size: 10px; text-anchor: middle; fill: #666; }
+      .actor { fill: #e3f2fd; stroke: #1976d2; stroke-width: 2; }
+      .service { fill: #f3e5f5; stroke: #4a148c; stroke-width: 1.5; }
+      .database { fill: #e8f5e8; stroke: #2e7d32; stroke-width: 2; }
+      .queue { fill: #fff3e0; stroke: #ef6c00; stroke-width: 2; }
+      .arrow { stroke: #333; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-dashed { stroke: #666; stroke-width: 1; stroke-dasharray: 5,5; fill: none; marker-end: url(#arrowhead); }
+      .arrow-error { stroke: #d32f2f; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .lifeline { stroke: #999; stroke-width: 1; stroke-dasharray: 2,2; }
+      .activation { fill: #bbdefb; stroke: #1976d2; stroke-width: 1; }
+      .note { fill: #fff9c4; stroke: #f57f17; stroke-width: 1; }
+      .success { fill: #c8e6c9; stroke: #388e3c; stroke-width: 1; }
+      .error { fill: #ffcdd2; stroke: #d32f2f; stroke-width: 1; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="700" y="30" class="title">Saga Pattern - Report Creation Sequence</text>
+  <text x="700" y="50" class="subtitle">Distributed Transaction Management</text>
+
+  <!-- Actors and Services -->
+  <!-- Client -->
+  <rect x="50" y="80" width="100" height="60" rx="10" class="actor"/>
+  <text x="100" y="105" class="label">Client</text>
+  <text x="100" y="120" class="small-label">Web/Mobile</text>
+  <text x="100" y="135" class="small-label">App</text>
+
+  <!-- API Gateway -->
+  <rect x="200" y="80" width="100" height="60" rx="10" class="service"/>
+  <text x="250" y="105" class="label">API Gateway</text>
+  <text x="250" y="120" class="small-label">Port: 8080</text>
+  <text x="250" y="135" class="small-label">JWT Auth</text>
+
+  <!-- Report Service -->
+  <rect x="350" y="80" width="100" height="60" rx="10" class="service"/>
+  <text x="400" y="105" class="label">Report Service</text>
+  <text x="400" y="120" class="small-label">Port: 8083</text>
+  <text x="400" y="135" class="small-label">Saga Coordinator</text>
+
+  <!-- User Service -->
+  <rect x="500" y="80" width="100" height="60" rx="10" class="service"/>
+  <text x="550" y="105" class="label">User Service</text>
+  <text x="550" y="120" class="small-label">Port: 8081</text>
+  <text x="550" y="135" class="small-label">Validation</text>
+
+  <!-- Template Service -->
+  <rect x="650" y="80" width="100" height="60" rx="10" class="service"/>
+  <text x="700" y="105" class="label">Template Service</text>
+  <text x="700" y="120" class="small-label">Port: 8082</text>
+  <text x="700" y="135" class="small-label">Validation</text>
+
+  <!-- Data Service -->
+  <rect x="800" y="80" width="100" height="60" rx="10" class="service"/>
+  <text x="850" y="105" class="label">Data Service</text>
+  <text x="850" y="120" class="small-label">Port: 8084</text>
+  <text x="850" y="135" class="small-label">Collection</text>
+
+  <!-- Storage Service -->
+  <rect x="950" y="80" width="100" height="60" rx="10" class="service"/>
+  <text x="1000" y="105" class="label">Storage Service</text>
+  <text x="1000" y="120" class="small-label">Port: 8086</text>
+  <text x="1000" y="135" class="small-label">File Storage</text>
+
+  <!-- Notification Service -->
+  <rect x="1100" y="80" width="100" height="60" rx="10" class="service"/>
+  <text x="1150" y="105" class="label">Notification</text>
+  <text x="1150" y="120" class="small-label">Service</text>
+  <text x="1150" y="135" class="small-label">Port: 8085</text>
+
+  <!-- RabbitMQ -->
+  <rect x="1250" y="80" width="100" height="60" rx="10" class="queue"/>
+  <text x="1300" y="105" class="label">RabbitMQ</text>
+  <text x="1300" y="120" class="small-label">Message</text>
+  <text x="1300" y="135" class="small-label">Queue</text>
+
+  <!-- Lifelines -->
+  <line x1="100" y1="140" x2="100" y2="950" class="lifeline"/>
+  <line x1="250" y1="140" x2="250" y2="950" class="lifeline"/>
+  <line x1="400" y1="140" x2="400" y2="950" class="lifeline"/>
+  <line x1="550" y1="140" x2="550" y2="950" class="lifeline"/>
+  <line x1="700" y1="140" x2="700" y2="950" class="lifeline"/>
+  <line x1="850" y1="140" x2="850" y2="950" class="lifeline"/>
+  <line x1="1000" y1="140" x2="1000" y2="950" class="lifeline"/>
+  <line x1="1150" y1="140" x2="1150" y2="950" class="lifeline"/>
+  <line x1="1300" y1="140" x2="1300" y2="950" class="lifeline"/>
+
+  <!-- Sequence Steps -->
+  
+  <!-- 1. Client Request -->
+  <line x1="100" y1="160" x2="250" y2="160" class="arrow"/>
+  <text x1="175" y1="155" class="small-label">POST /api/v1/sagas/reports</text>
+  <text x1="175" y1="170" class="small-label">{"template_id": "1", "name": "Report"}</text>
+  
+  <!-- Activation: API Gateway -->
+  <rect x="240" y="150" width="20" height="20" class="activation"/>
+  
+  <!-- 2. API Gateway to Report Service -->
+  <line x1="250" y1="180" x2="400" y2="180" class="arrow"/>
+  <text x1="325" y1="175" class="small-label">Proxy Request</text>
+  
+  <!-- Activation: Report Service -->
+  <rect x="390" y="170" width="20" height="20" class="activation"/>
+  
+  <!-- 3. Create Saga -->
+  <rect x="380" y="200" width="40" height="30" class="success"/>
+  <text x="400" y="215" class="small-label">Create Saga</text>
+  <text x="400" y="225" class="small-label">ID: saga-xxx</text>
+  
+  <!-- 4. Start Saga Execution -->
+  <rect x="380" y="240" width="40" height="30" class="success"/>
+  <text x="400" y="255" class="small-label">Start Saga</text>
+  <text x="400" y="265" class="small-label">Async Execution</text>
+  
+  <!-- 5. Response to Client -->
+  <line x1="400" y1="280" x2="250" y2="280" class="arrow"/>
+  <text x1="325" y1="275" class="small-label">202 Accepted</text>
+  <text x1="325" y1="290" class="small-label">{"saga_id": "saga-xxx"}</text>
+  
+  <line x1="250" y1="300" x2="100" y2="300" class="arrow"/>
+  <text x1="175" y1="295" class="small-label">202 Accepted</text>
+  
+  <!-- Deactivation: API Gateway -->
+  <rect x="240" y="290" width="20" height="20" class="activation"/>
+  
+  <!-- Saga Steps Execution -->
+  
+  <!-- Step 1: Validate User -->
+  <line x1="400" y1="320" x2="550" y2="320" class="arrow"/>
+  <text x1="475" y1="315" class="small-label">1. Validate User</text>
+  <text x1="475" y1="330" class="small-label">user_id: 4</text>
+  
+  <!-- Activation: User Service -->
+  <rect x="540" y="310" width="20" height="20" class="activation"/>
+  
+  <!-- User Service Response -->
+  <line x1="550" y1="340" x2="400" y2="340" class="arrow"/>
+  <text x1="475" y1="335" class="small-label">User Valid</text>
+  
+  <!-- Deactivation: User Service -->
+  <rect x="540" y="330" width="20" height="20" class="activation"/>
+  
+  <!-- Step 2: Validate Template -->
+  <line x1="400" y1="360" x2="700" y2="360" class="arrow"/>
+  <text x1="550" y1="355" class="small-label">2. Validate Template</text>
+  <text x1="550" y1="370" class="small-label">template_id: 1</text>
+  
+  <!-- Activation: Template Service -->
+  <rect x="690" y="350" width="20" height="20" class="activation"/>
+  
+  <!-- Template Service Response -->
+  <line x1="700" y1="380" x2="400" y2="380" class="arrow"/>
+  <text x1="550" y1="375" class="small-label">Template Valid</text>
+  
+  <!-- Deactivation: Template Service -->
+  <rect x="690" y="370" width="20" height="20" class="activation"/>
+  
+  <!-- Step 3: Collect Data -->
+  <line x1="400" y1="400" x2="850" y2="400" class="arrow"/>
+  <text x1="625" y1="395" class="small-label">3. Collect Data</text>
+  <text x1="625" y1="410" class="small-label">parameters: {...}</text>
+  
+  <!-- Activation: Data Service -->
+  <rect x="840" y="390" width="20" height="20" class="activation"/>
+  
+  <!-- Data Service Response -->
+  <line x1="850" y1="420" x2="400" y2="420" class="arrow"/>
+  <text x1="625" y1="415" class="small-label">Data Collected</text>
+  
+  <!-- Deactivation: Data Service -->
+  <rect x="840" y="410" width="20" height="20" class="activation"/>
+  
+  <!-- Step 4: Generate Report -->
+  <rect x="380" y="440" width="40" height="30" class="success"/>
+  <text x="400" y="455" class="small-label">4. Generate</text>
+  <text x="400" y="465" class="small-label">Report</text>
+  
+  <!-- Step 5: Store File -->
+  <line x1="400" y1="480" x2="1000" y2="480" class="arrow"/>
+  <text x1="700" y1="475" class="small-label">5. Store File</text>
+  <text x1="700" y1="490" class="small-label">file_type: report</text>
+  
+  <!-- Activation: Storage Service -->
+  <rect x="990" y="470" width="20" height="20" class="activation"/>
+  
+  <!-- Storage Service Response -->
+  <line x1="1000" y1="500" x2="400" y2="500" class="arrow"/>
+  <text x1="700" y1="495" class="small-label">File Stored</text>
+  
+  <!-- Deactivation: Storage Service -->
+  <rect x="990" y="490" width="20" height="20" class="activation"/>
+  
+  <!-- Step 6: Send Notification -->
+  <line x1="400" y1="520" x2="1150" y2="520" class="arrow"/>
+  <text x1="775" y1="515" class="small-label">6. Send Notification</text>
+  <text x1="775" y1="530" class="small-label">type: report_ready</text>
+  
+  <!-- Activation: Notification Service -->
+  <rect x="1140" y="510" width="20" height="20" class="activation"/>
+  
+  <!-- Notification Service publishes event -->
+  <line x1="1150" y1="540" x2="1300" y2="540" class="arrow-dashed"/>
+  <text x1="1225" y1="535" class="small-label">Publish Event</text>
+  <text x1="1225" y1="550" class="small-label">report.completed</text>
+  
+  <!-- Notification Service Response -->
+  <line x1="1150" y1="560" x2="400" y2="560" class="arrow"/>
+  <text x1="775" y1="555" class="small-label">Notification Sent</text>
+  
+  <!-- Deactivation: Notification Service -->
+  <rect x="1140" y="550" width="20" height="20" class="activation"/>
+  
+  <!-- Step 7: Update Report Status -->
+  <rect x="380" y="580" width="40" height="30" class="success"/>
+  <text x="400" y="595" class="small-label">7. Update</text>
+  <text x="400" y="605" class="small-label">Status</text>
+  
+  <!-- Saga Completion -->
+  <rect x="360" y="620" width="80" height="40" class="success"/>
+  <text x="400" y="635" class="small-label">Saga Completed</text>
+  <text x="400" y="650" class="small-label">Status: completed</text>
+  
+  <!-- Error Handling Scenario -->
+  <line x1="400" y1="680" x2="700" y2="680" class="arrow-error"/>
+  <text x1="550" y1="675" class="small-label">ERROR: Template Not Found</text>
+  
+  <!-- Compensation -->
+  <rect x="360" y="700" width="80" height="40" class="error"/>
+  <text x="400" y="715" class="small-label">Compensation</text>
+  <text x="400" y="730" class="small-label">Rollback Steps</text>
+  
+  <!-- Compensation Steps -->
+  <line x1="400" y1="750" x2="1000" y2="750" class="arrow-error"/>
+  <text x1="700" y1="745" class="small-label">Delete File</text>
+  
+  <line x1="400" y1="770" x2="400" y2="770" class="arrow-error"/>
+  <text x1="400" y1="765" class="small-label">Delete Report</text>
+  
+  <!-- Saga Failed -->
+  <rect x="360" y="790" width="80" height="40" class="error"/>
+  <text x="400" y="805" class="small-label">Saga Failed</text>
+  <text x="400" y="820" class="small-label">Status: failed</text>
+
+</svg>

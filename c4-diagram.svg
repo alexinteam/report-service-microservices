@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-family: Arial, sans-serif; font-size: 24px; font-weight: bold; text-anchor: middle; fill: #333; }
+      .subtitle { font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-anchor: middle; fill: #666; }
+      .label { font-family: Arial, sans-serif; font-size: 12px; text-anchor: middle; fill: #333; }
+      .small-label { font-family: Arial, sans-serif; font-size: 10px; text-anchor: middle; fill: #666; }
+      .container { fill: #e1f5fe; stroke: #01579b; stroke-width: 2; }
+      .component { fill: #f3e5f5; stroke: #4a148c; stroke-width: 1.5; }
+      .database { fill: #e8f5e8; stroke: #2e7d32; stroke-width: 2; }
+      .queue { fill: #fff3e0; stroke: #ef6c00; stroke-width: 2; }
+      .monitoring { fill: #fce4ec; stroke: #c2185b; stroke-width: 2; }
+      .arrow { stroke: #333; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .arrow-dashed { stroke: #666; stroke-width: 1; stroke-dasharray: 5,5; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="600" y="30" class="title">Report Microservices System</text>
+  <text x="600" y="50" class="subtitle">C4 Level 1 - System Context Diagram</text>
+
+  <!-- External Users -->
+  <rect x="50" y="100" width="120" height="80" rx="10" fill="#e3f2fd" stroke="#1976d2" stroke-width="2"/>
+  <text x="110" y="125" class="label">External</text>
+  <text x="110" y="140" class="label">Users</text>
+  <text x="110" y="155" class="small-label">Web/Mobile</text>
+  <text x="110" y="170" class="small-label">Clients</text>
+
+  <!-- API Gateway -->
+  <rect x="250" y="100" width="120" height="80" rx="10" class="container"/>
+  <text x="310" y="125" class="label">API Gateway</text>
+  <text x="310" y="140" class="label">(Kong/Nginx)</text>
+  <text x="310" y="155" class="small-label">Port: 8080</text>
+  <text x="310" y="170" class="small-label">JWT Auth</text>
+
+  <!-- Report System -->
+  <rect x="450" y="50" width="300" height="180" rx="10" class="container"/>
+  <text x="600" y="75" class="label">Report Microservices System</text>
+
+  <!-- User Service -->
+  <rect x="470" y="100" width="100" height="60" rx="5" class="component"/>
+  <text x="520" y="120" class="small-label">User Service</text>
+  <text x="520" y="135" class="small-label">Port: 8081</text>
+  <text x="520" y="150" class="small-label">Auth &amp; Users</text>
+
+  <!-- Template Service -->
+  <rect x="590" y="100" width="100" height="60" rx="5" class="component"/>
+  <text x="640" y="120" class="small-label">Template</text>
+  <text x="640" y="135" class="small-label">Service</text>
+  <text x="640" y="150" class="small-label">Port: 8082</text>
+
+  <!-- Report Service -->
+  <rect x="470" y="180" width="100" height="60" rx="5" class="component"/>
+  <text x="520" y="200" class="small-label">Report Service</text>
+  <text x="520" y="215" class="small-label">Port: 8083</text>
+  <text x="520" y="230" class="small-label">Saga Pattern</text>
+
+  <!-- Data Service -->
+  <rect x="590" y="180" width="100" height="60" rx="5" class="component"/>
+  <text x="640" y="200" class="small-label">Data Service</text>
+  <text x="640" y="215" class="small-label">Port: 8084</text>
+  <text x="640" y="230" class="small-label">Data Sources</text>
+
+  <!-- Notification Service -->
+  <rect x="710" y="100" width="100" height="60" rx="5" class="component"/>
+  <text x="760" y="120" class="small-label">Notification</text>
+  <text x="760" y="135" class="small-label">Service</text>
+  <text x="760" y="150" class="small-label">Port: 8085</text>
+
+  <!-- Storage Service -->
+  <rect x="710" y="180" width="100" height="60" rx="5" class="component"/>
+  <text x="760" y="200" class="small-label">Storage</text>
+  <text x="760" y="215" class="small-label">Service</text>
+  <text x="760" y="230" class="small-label">Port: 8086</text>
+
+  <!-- Databases -->
+  <rect x="850" y="100" width="120" height="80" rx="10" class="database"/>
+  <text x="910" y="125" class="label">PostgreSQL</text>
+  <text x="910" y="140" class="label">Databases</text>
+  <text x="910" y="155" class="small-label">Per Service</text>
+  <text x="910" y="170" class="small-label">Isolated</text>
+
+  <!-- Message Queue -->
+  <rect x="850" y="200" width="120" height="80" rx="10" class="queue"/>
+  <text x="910" y="225" class="label">RabbitMQ</text>
+  <text x="910" y="240" class="label">Message Queue</text>
+  <text x="910" y="255" class="small-label">Event-Driven</text>
+  <text x="910" y="270" class="small-label">Saga Events</text>
+
+  <!-- Monitoring -->
+  <rect x="50" y="300" width="200" height="120" rx="10" class="monitoring"/>
+  <text x="150" y="325" class="label">Monitoring Stack</text>
+  
+  <rect x="70" y="340" width="80" height="40" rx="5" class="monitoring"/>
+  <text x="110" y="360" class="small-label">Prometheus</text>
+  <text x="110" y="375" class="small-label">Metrics</text>
+  
+  <rect x="160" y="340" width="80" height="40" rx="5" class="monitoring"/>
+  <text x="200" y="360" class="small-label">Grafana</text>
+  <text x="200" y="375" class="small-label">Dashboards</text>
+
+  <!-- Redis Cache -->
+  <rect x="300" y="300" width="120" height="80" rx="10" class="queue"/>
+  <text x="360" y="325" class="label">Redis Cache</text>
+  <text x="360" y="340" class="label">Session Store</text>
+  <text x="360" y="355" class="small-label">JWT Tokens</text>
+  <text x="360" y="370" class="small-label">Caching</text>
+
+  <!-- External Systems -->
+  <rect x="500" y="300" width="200" height="120" rx="10" fill="#f1f8e9" stroke="#689f38" stroke-width="2"/>
+  <text x="600" y="325" class="label">External Systems</text>
+  
+  <rect x="520" y="340" width="80" height="40" rx="5" fill="#f1f8e9" stroke="#689f38" stroke-width="1"/>
+  <text x="560" y="360" class="small-label">External</text>
+  <text x="560" y="375" class="small-label">APIs</text>
+  
+  <rect x="620" y="340" width="80" height="40" rx="5" fill="#f1f8e9" stroke="#689f38" stroke-width="1"/>
+  <text x="660" y="360" class="small-label">File</text>
+  <text x="660" y="375" class="small-label">Storage</text>
+
+  <!-- Kubernetes -->
+  <rect x="750" y="300" width="200" height="120" rx="10" fill="#e8eaf6" stroke="#3f51b5" stroke-width="2"/>
+  <text x="850" y="325" class="label">Kubernetes Cluster</text>
+  <text x="850" y="340" class="label">Container Platform</text>
+  <text x="850" y="355" class="small-label">Namespaces:</text>
+  <text x="850" y="370" class="small-label">api-gateway, user-service,</text>
+  <text x="850" y="385" class="small-label">template-service, report-service,</text>
+  <text x="850" y="400" class="small-label">data-service, notification-service,</text>
+  <text x="850" y="415" class="small-label">storage-service, system</text>
+
+  <!-- Connections -->
+  <!-- Users to API Gateway -->
+  <line x1="170" y1="140" x2="250" y2="140" class="arrow"/>
+  <text x="210" y="135" class="small-label">HTTPS</text>
+
+  <!-- API Gateway to Services -->
+  <line x1="370" y1="140" x2="470" y2="140" class="arrow"/>
+  <text x="420" y="135" class="small-label">HTTP</text>
+
+  <!-- Services to Databases -->
+  <line x1="570" y1="140" x2="850" y2="140" class="arrow-dashed"/>
+  <text x="710" y="135" class="small-label">SQL</text>
+
+  <!-- Services to RabbitMQ -->
+  <line x1="570" y1="210" x2="850" y2="240" class="arrow-dashed"/>
+  <text x="710" y="225" class="small-label">AMQP</text>
+
+  <!-- Services to Monitoring -->
+  <line x1="520" y1="250" x2="150" y2="300" class="arrow-dashed"/>
+  <text x="335" y="275" class="small-label">Metrics</text>
+
+  <!-- Services to Redis -->
+  <line x1="520" y1="160" x2="360" y2="300" class="arrow-dashed"/>
+  <text x="440" y="230" class="small-label">Cache</text>
+
+  <!-- Data Service to External Systems -->
+  <line x1="640" y1="240" x2="600" y2="300" class="arrow-dashed"/>
+  <text x="620" y="270" class="small-label">Data</text>
+
+  <!-- Storage Service to External Storage -->
+  <line x1="760" y1="240" x2="660" y2="300" class="arrow-dashed"/>
+  <text x="710" y="270" class="small-label">Files</text>
+</svg>
