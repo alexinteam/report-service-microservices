@@ -251,11 +251,11 @@ create_all_dashboards() {
     log "Создание всех дашбордов..."
     
     local dashboards=(
-        "dashboards/microservices-overview-dashboard.json:Microservices Overview"
-        "dashboards/business-metrics-dashboard.json:Business Metrics"
-        "dashboards/saga-metrics-dashboard.json:Saga Metrics"
-        "dashboards/service-details-dashboard.json:Service Details"
-        "dashboards/alerts-health-dashboard.json:Alerts & Health"
+        "../dashboards/microservices-overview-dashboard.json:Microservices Overview"
+        "../dashboards/business-metrics-dashboard.json:Business Metrics"
+        "../dashboards/saga-metrics-dashboard.json:Saga Metrics"
+        "../dashboards/service-details-dashboard.json:Service Details"
+        "../dashboards/alerts-health-dashboard.json:Alerts & Health"
     )
     
     local success_count=0
@@ -285,7 +285,10 @@ generate_test_data() {
     local services=(
         "user-service-service:8081:user-service"
         "template-service-service:8082:template-service"
+        "report-service-service:8083:report-service"
+        "data-service-service:8084:data-service"
         "notification-service-service:8085:notification-service"
+        "storage-service-service:8086:storage-service"
     )
     
     for service_info in "${services[@]}"; do
@@ -311,6 +314,71 @@ generate_test_data() {
         # Закрываем port-forward
         kill $pid 2>/dev/null || true
     done
+}
+
+# Генерация метрик для новых функций
+generate_new_features_metrics() {
+    log "Генерация метрик для новых функций..."
+    
+    # Получаем токен
+    local token=$(curl -s -X POST -H "Content-Type: application/json" \
+        -d '{"email":"test@example.com","password":"password123"}' \
+        http://arch.homework/api/v1/users/login | jq -r '.token')
+    
+    if [ "$token" = "null" ] || [ -z "$token" ]; then
+        warning "Не удалось получить токен для генерации метрик новых функций"
+        return 1
+    fi
+    
+    # Генерируем метрики CSV экспорта
+    log "Генерация метрик CSV экспорта..."
+    
+    # Создаем несколько отчетов через саги
+    for i in {1..3}; do
+        log "Создание отчета для CSV экспорта $i..."
+        saga_response=$(curl -s -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/json" \
+            -d "{\"template_id\": \"1\",\"name\": \"CSV Export Test $i\",\"format\": \"csv\",\"parameters\": {\"title\": \"CSV Export Test $i\"}}" \
+            http://arch.homework/api/v1/sagas/reports)
+        
+        saga_id=$(echo "$saga_response" | jq -r '.saga_id')
+        if [ "$saga_id" != "null" ] && [ -n "$saga_id" ]; then
+            success "Saga для CSV отчета $i создана: $saga_id"
+            sleep 2  # Ждем завершения саги
+            
+            # Получаем ID созданного отчета и экспортируем
+            reports_response=$(curl -s -H "Authorization: Bearer $token" http://arch.homework/api/v1/reports)
+            latest_report_id=$(echo "$reports_response" | jq -r '.reports[0].id')
+            if [ "$latest_report_id" != "null" ] && [ -n "$latest_report_id" ]; then
+                log "Экспорт отчета $latest_report_id в CSV..."
+                curl -s -H "Authorization: Bearer $token" \
+                    http://arch.homework/api/v1/reports/$latest_report_id/export/csv >/dev/null
+                success "Отчет $latest_report_id экспортирован в CSV"
+            fi
+        fi
+        sleep 1
+    done
+    
+    success "Метрики CSV экспорта сгенерированы"
+    
+    # Генерируем метрики уведомлений
+    log "Генерация метрик уведомлений..."
+    
+    # Создаем несколько саг для генерации уведомлений
+    for i in {1..4}; do
+        log "Создание саги для уведомления $i..."
+        curl -s -X POST -H "Authorization: Bearer $token" -H "Content-Type: application/json" \
+            -d "{\"template_id\": \"1\",\"name\": \"Notification Test $i\",\"format\": \"html\",\"parameters\": {\"title\": \"Notification Test $i\"}}" \
+            http://arch.homework/api/v1/sagas/reports >/dev/null
+        sleep 1
+    done
+    
+    # Проверяем уведомления
+    sleep 3
+    notifications_response=$(curl -s -H "Authorization: Bearer $token" http://arch.homework/api/v1/notifications?page=1&limit=10)
+    notification_count=$(echo "$notifications_response" | jq -r '.total // 0' 2>/dev/null || echo "0")
+    success "Уведомления созданы: $notification_count"
+    
+    success "Метрики уведомлений сгенерированы"
 }
 
 # Показать статус системы мониторинга
@@ -394,6 +462,10 @@ main() {
     generate_test_data
     
     echo ""
+    log "Генерация метрик для новых функций..."
+    generate_new_features_metrics
+    
+    echo ""
     success "Проверка завершена!"
     echo ""
     show_status
@@ -418,6 +490,9 @@ case "${1:-}" in
     "test")
         generate_test_data
         ;;
+    "new-features")
+        generate_new_features_metrics
+        ;;
     "status")
         show_status
         ;;
@@ -428,14 +503,15 @@ case "${1:-}" in
         echo "Использование: $0 [команда]"
         echo ""
         echo "Команды:"
-        echo "  check      - Проверить все компоненты системы"
-        echo "  grafana    - Проверить Grafana"
-        echo "  prometheus - Проверить Prometheus и метрики"
-        echo "  dashboards - Создать дашборды"
-        echo "  test       - Генерировать тестовые данные"
-        echo "  status     - Показать статус системы"
-        echo "  commands   - Показать полезные команды"
-        echo "  help       - Показать эту справку"
+        echo "  check        - Проверить все компоненты системы"
+        echo "  grafana      - Проверить Grafana"
+        echo "  prometheus   - Проверить Prometheus и метрики"
+        echo "  dashboards   - Создать дашборды"
+        echo "  test         - Генерировать тестовые данные"
+        echo "  new-features - Генерировать метрики для новых функций (CSV экспорт, уведомления)"
+        echo "  status       - Показать статус системы"
+        echo "  commands     - Показать полезные команды"
+        echo "  help         - Показать эту справку"
         echo ""
         echo "Без аргументов выполняется полная проверка"
         ;;

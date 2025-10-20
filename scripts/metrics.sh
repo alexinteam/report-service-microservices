@@ -27,6 +27,67 @@ print_warning() {
     echo -e "${YELLOW}⚠️  $1${NC}"
 }
 
+# Функция для создания дашбордов
+create_dashboards() {
+    print_header "СОЗДАНИЕ ДАШБОРДОВ"
+    
+    # Проверяем доступность Grafana
+    if ! curl -s "http://localhost/api/health" | grep -q "ok"; then
+        print_error "Grafana недоступна. Запустите: kubectl port-forward service/grafana-service 3000:80 -n system"
+        return 1
+    fi
+    
+    local dashboards=(
+        "../dashboards/microservices-overview-dashboard.json:Microservices Overview"
+        "../dashboards/business-metrics-dashboard.json:Business Metrics"
+        "../dashboards/saga-metrics-dashboard.json:Saga Metrics"
+        "../dashboards/service-details-dashboard.json:Service Details"
+        "../dashboards/alerts-health-dashboard.json:Alerts & Health"
+    )
+    
+    local success_count=0
+    local total_count=${#dashboards[@]}
+    
+    for dashboard_info in "${dashboards[@]}"; do
+        local file=$(echo "$dashboard_info" | cut -d: -f1)
+        local name=$(echo "$dashboard_info" | cut -d: -f2)
+        
+        if [ -f "$file" ]; then
+            print_info "Создание дашборда '$name'..."
+            
+            # Проверяем, существует ли дашборд
+            local existing_id=$(curl -s "http://localhost/api/search?type=dash-db&query=$name" \
+                -H "Authorization: Basic $(echo -n 'admin:admin123' | base64)" \
+                | jq -r '.[0].id // empty' 2>/dev/null)
+            
+            if [ -n "$existing_id" ]; then
+                print_warning "Дашборд '$name' уже существует (ID: $existing_id)"
+                ((success_count++))
+                continue
+            fi
+            
+            # Создаем дашборд
+            local response=$(curl -s -X POST "http://localhost/api/dashboards/db" \
+                -H "Content-Type: application/json" \
+                -H "Authorization: Basic $(echo -n 'admin:admin123' | base64)" \
+                -d @"$file")
+            
+            if echo "$response" | grep -q '"status":"success"'; then
+                print_success "Дашборд '$name' создан"
+                ((success_count++))
+            else
+                print_error "Ошибка создания дашборда '$name'"
+                echo "$response" | jq -r '.message // .' 2>/dev/null || echo "$response"
+            fi
+        else
+            print_error "Файл дашборда '$file' не найден"
+        fi
+        echo ""
+    done
+    
+    print_info "Результат: $success_count/$total_count дашбордов создано"
+}
+
 # Функция для генерации всех метрик
 generate_all_metrics() {
     print_header "ГЕНЕРАЦИЯ ВСЕХ МЕТРИК ДЛЯ GRAFANA"
@@ -118,6 +179,65 @@ generate_all_metrics() {
     
     print_success "Бизнес-метрики сгенерированы"
     
+    # Генерируем метрики для CSV экспорта
+    print_info "Генерация метрик CSV экспорта..."
+    
+    # Создаем несколько отчетов через саги для экспорта
+    report_ids=()
+    for i in {1..4}; do
+        print_info "Создание отчета для CSV экспорта $i..."
+        saga_response=$(curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            -d "{\"template_id\": \"1\",\"name\": \"CSV Export Report $i\",\"format\": \"csv\",\"parameters\": {\"title\": \"CSV Export Report $i\"}}" \
+            http://arch.homework/api/v1/sagas/reports)
+        
+        saga_id=$(echo "$saga_response" | jq -r '.saga_id')
+        if [ "$saga_id" != "null" ] && [ -n "$saga_id" ]; then
+            print_success "Saga для CSV отчета $i создана: $saga_id"
+            sleep 2  # Ждем завершения саги
+            
+            # Получаем ID созданного отчета
+            reports_response=$(curl -s -H "Authorization: Bearer $TOKEN" http://arch.homework/api/v1/reports)
+            latest_report_id=$(echo "$reports_response" | jq -r '.reports[0].id')
+            if [ "$latest_report_id" != "null" ] && [ -n "$latest_report_id" ]; then
+                report_ids+=("$latest_report_id")
+                print_success "Отчет $i готов для экспорта: ID $latest_report_id"
+            fi
+        fi
+        sleep 1
+    done
+    
+    # Экспортируем отчеты в CSV
+    for report_id in "${report_ids[@]}"; do
+        if [ -n "$report_id" ]; then
+            print_info "Экспорт отчета $report_id в CSV..."
+            curl -s -H "Authorization: Bearer $TOKEN" \
+                http://arch.homework/api/v1/reports/$report_id/export/csv >/dev/null
+            sleep 0.5
+        fi
+    done
+    
+    print_success "Метрики CSV экспорта сгенерированы"
+    
+    # Генерируем метрики для уведомлений
+    print_info "Генерация метрик уведомлений..."
+    
+    # Создаем несколько саг для генерации уведомлений
+    for i in {1..5}; do
+        print_info "Создание саги для уведомления $i..."
+        curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            -d "{\"template_id\": \"1\",\"name\": \"Notification Test $i\",\"format\": \"html\",\"parameters\": {\"title\": \"Notification Test $i\"}}" \
+            http://arch.homework/api/v1/sagas/reports >/dev/null
+        sleep 1
+    done
+    
+    # Проверяем уведомления
+    sleep 3
+    notifications_response=$(curl -s -H "Authorization: Bearer $TOKEN" http://arch.homework/api/v1/notifications?page=1&limit=10)
+    notification_count=$(echo "$notifications_response" | jq -r '.total // 0' 2>/dev/null || echo "0")
+    print_success "Уведомления созданы: $notification_count"
+    
+    print_success "Метрики уведомлений сгенерированы"
+    
     # Генерируем Saga метрики
     print_info "Генерация Saga метрик..."
     
@@ -128,7 +248,7 @@ generate_all_metrics() {
             -d "{\"template_id\": \"1\",\"name\": \"Quick Test Saga $i\",\"format\": \"html\",\"parameters\": {\"title\": \"Quick Test Saga $i\"}}" \
             http://arch.homework/api/v1/sagas/reports)
         
-        saga_id=$(echo "$response" | jq -r '.saga_id')
+        saga_id=$(echo "$response" | jq -r '.saga_id' 2>/dev/null || echo "")
         if [ "$saga_id" != "null" ] && [ -n "$saga_id" ]; then
             saga_ids+=("$saga_id")
             print_success "Saga $i создана: $saga_id"
@@ -266,6 +386,9 @@ main() {
     # Проверяем мониторинг
     check_monitoring
     
+    # Создаем дашборды
+    create_dashboards
+    
     # Генерируем все метрики
     generate_all_metrics
     
@@ -283,5 +406,29 @@ main() {
     print_info "Все дашборды должны быть заполнены данными!"
 }
 
-# Запуск
-main "$@"
+# Обработка аргументов командной строки
+case "${1:-}" in
+    "dashboards")
+        create_dashboards
+        ;;
+    "metrics")
+        generate_all_metrics
+        ;;
+    "check")
+        check_services && check_monitoring && check_metrics
+        ;;
+    "help"|"-h"|"--help")
+        echo "Использование: $0 [команда]"
+        echo ""
+        echo "Команды:"
+        echo "  dashboards - Создать дашборды в Grafana"
+        echo "  metrics    - Генерировать тестовые метрики"
+        echo "  check      - Проверить сервисы и метрики"
+        echo "  help       - Показать эту справку"
+        echo ""
+        echo "Без аргументов выполняется полная проверка с созданием дашбордов и генерацией метрик"
+        ;;
+    *)
+        main
+        ;;
+esac
