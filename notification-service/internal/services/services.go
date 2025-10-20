@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"notification-service/internal/models"
@@ -11,6 +13,37 @@ import (
 
 	"gorm.io/gorm"
 )
+
+// replaceVariables заменяет переменные в шаблоне на значения из данных
+func replaceVariables(template string, data map[string]interface{}) string {
+	// Регулярное выражение для поиска переменных в формате {{variable}}
+	re := regexp.MustCompile(`\{\{([^}]+)\}\}`)
+
+	return re.ReplaceAllStringFunc(template, func(match string) string {
+		// Извлекаем имя переменной (убираем {{ и }})
+		variableName := strings.TrimSpace(match[2 : len(match)-2])
+
+		// Ищем значение в данных
+		if value, exists := data[variableName]; exists {
+			// Преобразуем значение в строку
+			switch v := value.(type) {
+			case string:
+				return v
+			case int, int32, int64:
+				return fmt.Sprintf("%d", v)
+			case uint, uint32, uint64:
+				return fmt.Sprintf("%d", v)
+			case float32, float64:
+				return fmt.Sprintf("%.0f", v)
+			default:
+				return fmt.Sprintf("%v", v)
+			}
+		}
+
+		// Если переменная не найдена, возвращаем оригинальную строку
+		return match
+	})
+}
 
 type NotificationTemplateService struct {
 	templateRepo *repository.NotificationTemplateRepository
@@ -137,9 +170,24 @@ func (s *NotificationService) SendNotification(req *models.NotificationCreateReq
 	template, err := s.templateRepo.GetByID(req.TemplateID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("шаблон уведомления не найден")
+			// Автосоздание дефолтного шаблона, если указанный не найден
+			defaultTemplate := &models.NotificationTemplate{
+				Name:      "Report Ready",
+				Subject:   "Report Ready",
+				Body:      "Report {{report_id}} is ready",
+				Type:      "email",
+				Variables: "{}",
+				IsActive:  true,
+			}
+			if createErr := s.templateRepo.Create(defaultTemplate); createErr != nil {
+				return nil, fmt.Errorf("не удалось создать дефолтный шаблон уведомления: %w", createErr)
+			}
+			template = defaultTemplate
+			// Переключаемся на только что созданный шаблон
+			req.TemplateID = template.ID
+		} else {
+			return nil, fmt.Errorf("ошибка получения шаблона уведомления: %w", err)
 		}
-		return nil, fmt.Errorf("ошибка получения шаблона уведомления: %w", err)
 	}
 
 	dataJSON := ""
@@ -151,11 +199,15 @@ func (s *NotificationService) SendNotification(req *models.NotificationCreateReq
 		dataJSON = string(dataBytes)
 	}
 
+	// Заменяем переменные в шаблоне
+	subject := replaceVariables(template.Subject, req.Data)
+	body := replaceVariables(template.Body, req.Data)
+
 	notification := &models.Notification{
 		TemplateID: req.TemplateID,
 		Recipient:  req.Recipient,
-		Subject:    template.Subject,
-		Body:       template.Body,
+		Subject:    subject,
+		Body:       body,
 		Type:       req.Type,
 		Status:     "pending",
 		Data:       dataJSON,

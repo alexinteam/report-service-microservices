@@ -30,8 +30,8 @@ func NewIdempotentSagaCoordinator(publisher EventPublisher, stateStore *SagaStat
 	return &IdempotentSagaCoordinator{
 		publisher:   publisher,
 		stateStore:  stateStore,
-		maxRetries:  3,
-		retryDelay:  5 * time.Second,
+		maxRetries:  1,
+		retryDelay:  1 * time.Second,
 		stepHandler: stepHandler,
 		metrics:     metrics,
 	}
@@ -103,13 +103,50 @@ func (sc *IdempotentSagaCoordinator) ExecuteStep(ctx context.Context, sagaID str
 		return fmt.Errorf("шаг %s не найден в Saga %s", stepID, sagaID)
 	}
 
+	// Получаем актуальное состояние саги для получения обновленных данных шага
+	actualSaga, err := sc.stateStore.GetSagaState(ctx, sagaID)
+	if err != nil {
+		return fmt.Errorf("ошибка получения актуального состояния Saga: %w", err)
+	}
+
+	// Находим актуальный шаг в состоянии саги
+	var actualStep *SagaStep
+	for _, s := range actualSaga.Steps {
+		if s.ID == stepID {
+			actualStep = s
+			break
+		}
+	}
+	if actualStep == nil {
+		return fmt.Errorf("шаг %s не найден в актуальном состоянии Saga", stepID)
+	}
+
+	// Создаем копию шага с актуальными данными из состояния саги
+	stepCopy := &SagaStep{
+		ID:          actualStep.ID,
+		Name:        actualStep.Name,
+		Service:     actualStep.Service,
+		Action:      actualStep.Action,
+		Compensate:  actualStep.Compensate,
+		Data:        make(map[string]interface{}),
+		Status:      actualStep.Status,
+		Error:       actualStep.Error,
+		ExecutedAt:  actualStep.ExecutedAt,
+		CompletedAt: actualStep.CompletedAt,
+	}
+
+	// Копируем актуальные данные шага из состояния саги
+	for k, v := range actualStep.Data {
+		stepCopy.Data[k] = v
+	}
+
 	// Проверяем идемпотентность шага
-	if step.Status == SagaStepCompleted {
+	if stepCopy.Status == SagaStepCompleted {
 		log.Printf("Шаг %s уже выполнен в Saga %s", stepID, sagaID)
 		return nil
 	}
 
-	if step.Status == SagaStepExecuting {
+	if stepCopy.Status == SagaStepExecuting {
 		log.Printf("Шаг %s уже выполняется в Saga %s", stepID, sagaID)
 		return fmt.Errorf("шаг %s уже выполняется", stepID)
 	}
@@ -117,9 +154,13 @@ func (sc *IdempotentSagaCoordinator) ExecuteStep(ctx context.Context, sagaID str
 	log.Printf("Выполнение шага %s в Saga %s", stepID, sagaID)
 
 	// Обновляем статус шага
-	step.Status = SagaStepExecuting
+	stepCopy.Status = SagaStepExecuting
 	now := time.Now()
-	step.ExecutedAt = &now
+	stepCopy.ExecutedAt = &now
+
+	// Обновляем оригинальный шаг в состоянии саги
+	step.Status = stepCopy.Status
+	step.ExecutedAt = stepCopy.ExecutedAt
 
 	// Сохраняем состояние
 	if err := sc.stateStore.SaveSagaState(ctx, saga); err != nil {
@@ -133,15 +174,36 @@ func (sc *IdempotentSagaCoordinator) ExecuteStep(ctx context.Context, sagaID str
 			time.Sleep(sc.retryDelay)
 		}
 
-		err := sc.executeStepInternal(ctx, sagaID, stepID, step)
+		err := sc.executeStepInternal(ctx, sagaID, stepID, stepCopy)
 		if err == nil {
 			// Шаг выполнен успешно
-			step.Status = SagaStepCompleted
+			stepCopy.Status = SagaStepCompleted
 			now := time.Now()
-			step.CompletedAt = &now
-			step.Error = ""
+			stepCopy.CompletedAt = &now
+			stepCopy.Error = ""
 
-			// Сохраняем обновленное состояние
+			// Копируем обновленные данные обратно в оригинальный шаг
+			step.Status = stepCopy.Status
+			step.CompletedAt = stepCopy.CompletedAt
+			step.Error = stepCopy.Error
+			for k, v := range stepCopy.Data {
+				step.Data[k] = v
+			}
+
+			// Обновляем данные шага в оригинальном состоянии саги
+			for _, s := range saga.Steps {
+				if s.ID == stepID {
+					s.Status = stepCopy.Status
+					s.CompletedAt = stepCopy.CompletedAt
+					s.Error = stepCopy.Error
+					for k, v := range stepCopy.Data {
+						s.Data[k] = v
+					}
+					break
+				}
+			}
+
+			// Сохраняем обновленное состояние (включая обновленные данные шага)
 			if err := sc.stateStore.SaveSagaState(ctx, saga); err != nil {
 				log.Printf("Ошибка сохранения состояния после выполнения шага: %v", err)
 			}
@@ -204,6 +266,11 @@ func (sc *IdempotentSagaCoordinator) executeStepInternal(ctx context.Context, sa
 	}
 
 	return sc.publisher.Publish(ctx, event)
+}
+
+// GetSagaState получает состояние Saga
+func (sc *IdempotentSagaCoordinator) GetSagaState(ctx context.Context, sagaID string) (*Saga, error) {
+	return sc.stateStore.GetSagaState(ctx, sagaID)
 }
 
 // CompensateStep компенсирует шаг Saga с идемпотентностью

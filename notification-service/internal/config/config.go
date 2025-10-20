@@ -14,6 +14,7 @@ type Config struct {
 
 	DatabaseURL string `envconfig:"DATABASE_URL" required:"true"`
 	JWTSecret   string `envconfig:"JWT_SECRET" required:"true"`
+	RabbitMQURL string `envconfig:"RABBITMQ_URL" default:"amqp://admin:admin@rabbitmq.rabbitmq.svc.cluster.local:5672/"`
 
 	AutoMigrate bool `envconfig:"AUTO_MIGRATE" default:"true"`
 	SeedData    bool `envconfig:"SEED_DATA" default:"true"`

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -15,17 +16,20 @@ import (
 	"notification-service/internal/jwt"
 	"notification-service/internal/metrics"
 	"notification-service/internal/middleware"
+	"notification-service/internal/models"
 	"notification-service/internal/repository"
 	"notification-service/internal/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"github.com/streadway/amqp"
 	"gorm.io/gorm"
 )
 
 // Server представляет HTTP сервер
 type Server struct {
-	cfg *config.Config
+	cfg                 *config.Config
+	notificationService *services.NotificationService
 }
 
 // NewServer создает новый экземпляр сервера
@@ -60,6 +64,11 @@ func (s *Server) Start() error {
 	// Создание роутера
 	router := s.setupRouter(db, jwtManager, metricsManager)
 
+	// Запуск потребителя RabbitMQ (если URL указан)
+	if s.cfg.RabbitMQURL != "" {
+		go s.startRabbitConsumer()
+	}
+
 	// Создание HTTP сервера
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", s.cfg.Port),
@@ -92,6 +101,90 @@ func (s *Server) Start() error {
 	return nil
 }
 
+// startRabbitConsumer запускает consumer для событий report.completed
+func (s *Server) startRabbitConsumer() {
+	amqpURL := s.cfg.RabbitMQURL
+	conn, err := amqp.Dial(amqpURL)
+	if err != nil {
+		logrus.WithError(err).Warn("Не удалось подключиться к RabbitMQ")
+		return
+	}
+
+	ch, err := conn.Channel()
+	if err != nil {
+		logrus.WithError(err).Warn("Не удалось открыть канал RabbitMQ")
+		return
+	}
+
+	// Объявляем exchange и очередь
+	if err := ch.ExchangeDeclare("events", "topic", true, false, false, false, nil); err != nil {
+		logrus.WithError(err).Warn("Не удалось объявить exchange events")
+		return
+	}
+
+	q, err := ch.QueueDeclare("notification-report-completed", true, false, false, false, nil)
+	if err != nil {
+		logrus.WithError(err).Warn("Не удалось объявить очередь notification-report-completed")
+		return
+	}
+
+	if err := ch.QueueBind(q.Name, "report.completed", "events", false, nil); err != nil {
+		logrus.WithError(err).Warn("Не удалось привязать очередь к ключу report.completed")
+		return
+	}
+
+	msgs, err := ch.Consume(q.Name, "", true, false, false, false, nil)
+	if err != nil {
+		logrus.WithError(err).Warn("Не удалось создать consumer RabbitMQ")
+		return
+	}
+
+	logrus.Info("RabbitMQ consumer notification-service запущен (report.completed)")
+
+	// Простой обработчик: создаем запись уведомления на основе события
+	go func() {
+		for m := range msgs {
+			logrus.WithField("routing_key", m.RoutingKey).Info("Получено событие из RabbitMQ")
+			var evt struct {
+				Type string                 `json:"type"`
+				Data map[string]interface{} `json:"data"`
+			}
+			if err := json.Unmarshal(m.Body, &evt); err != nil {
+				logrus.WithError(err).Warn("Не удалось распарсить событие")
+				continue
+			}
+			if evt.Type != "report.completed" {
+				continue
+			}
+			userID := ""
+			if v, ok := evt.Data["user_id"].(string); ok {
+				userID = v
+			}
+			reportID := ""
+			if v, ok := evt.Data["report_id"].(string); ok {
+				reportID = v
+			}
+			req := &models.NotificationCreateRequest{
+				TemplateID: 1,
+				Recipient:  userID,
+				Type:       "report_ready",
+				Data: map[string]interface{}{
+					"report_id": reportID,
+				},
+			}
+			if s.notificationService == nil {
+				logrus.Warn("notificationService не инициализирован")
+				continue
+			}
+			if _, err := s.notificationService.SendNotification(req); err != nil {
+				logrus.WithError(err).Warn("Не удалось создать уведомление из события")
+			} else {
+				logrus.Info("Уведомление создано из события report.completed")
+			}
+		}
+	}()
+}
+
 // setupRouter настраивает маршруты и middleware
 func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager, metricsManager *metrics.Metrics) *gin.Engine {
 	router := gin.Default()
@@ -114,6 +207,7 @@ func (s *Server) setupRouter(db *gorm.DB, jwtManager *jwt.Manager, metricsManage
 	templateService := services.NewNotificationTemplateService(templateRepo)
 	notificationService := services.NewNotificationService(notificationRepo, templateRepo)
 	channelService := services.NewNotificationChannelService(channelRepo)
+	s.notificationService = notificationService
 
 	// Инициализация обработчиков
 	templateHandler := handlers.NewNotificationTemplateHandler(templateService, metricsManager)

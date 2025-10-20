@@ -79,13 +79,13 @@ func (s *Server) Start() error {
 	}
 
 	// Создание идемпотентного Saga Coordinator
-	sagaStepHandler := handlers.NewSagaStepHandler(reportService)
+	sagaStepHandler := handlers.NewSagaStepHandler(reportService, eventPublisher)
 	sagaCoordinator := events.NewIdempotentSagaCoordinator(eventPublisher, sagaStateStore, sagaStepHandler, metricsManager)
 
 	// Запуск Outbox Publisher для надежной публикации событий
 	if outboxManager != nil {
 		outboxPublisher := events.NewOutboxPublisher(outboxManager, eventPublisher)
-		go outboxPublisher.StartPublishing(context.Background(), 5*time.Second, 10)
+		go outboxPublisher.StartPublishing(context.Background(), 1*time.Second, 10)
 	}
 
 	// Миграция Saga таблиц
@@ -181,6 +181,7 @@ func (s *Server) setupRoutes(router *gin.Engine, reportHandler *handlers.ReportH
 			protected.DELETE("/:id", reportHandler.DeleteReport)
 			protected.POST("/generate", reportHandler.GenerateReport)
 			protected.GET("/:id/download", reportHandler.DownloadReport)
+			protected.GET("/:id/export/csv", reportHandler.ExportReportCSV)
 		}
 
 		// Saga маршруты

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -64,17 +65,10 @@ func (h *SagaHandler) CreateReportSaga(c *gin.Context) {
 		UpdatedAt: time.Now(),
 	}
 
-	// Запускаем Saga и сохраняем состояние
-	ctx := c.Request.Context()
-	if err := h.sagaCoordinator.StartSaga(ctx, saga); err != nil {
-		logrus.WithError(err).Errorf("Ошибка запуска Saga %s", saga.ID)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка создания Saga"})
-		return
-	}
-
 	// Запускаем выполнение Saga асинхронно
 	go func() {
-		if err := idempotentSaga.Execute(ctx, h.sagaCoordinator); err != nil {
+		backgroundCtx := context.Background()
+		if err := idempotentSaga.Execute(backgroundCtx, h.sagaCoordinator); err != nil {
 			logrus.WithError(err).Errorf("Ошибка выполнения Saga %s", saga.ID)
 		}
 	}()

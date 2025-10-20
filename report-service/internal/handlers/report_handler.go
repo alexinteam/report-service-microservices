@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 	"time"
@@ -69,7 +70,7 @@ func (h *ReportHandler) CreateReport(c *gin.Context) {
 
 	// Запускаем Saga асинхронно
 	go func() {
-		ctx := c.Request.Context()
+		ctx := context.Background()
 		if err := saga.Execute(ctx, h.sagaCoordinator); err != nil {
 			logrus.WithError(err).Errorf("Ошибка выполнения Saga создания отчета %s", saga.ID)
 			// Обновляем статус отчета на failed
@@ -295,4 +296,38 @@ func (h *ReportHandler) DownloadReport(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Отчет готов к скачиванию", "report": report})
+}
+
+// ExportReportCSV экспортирует отчет в формат CSV
+func (h *ReportHandler) ExportReportCSV(c *gin.Context) {
+	start := time.Now()
+	defer func() {
+		h.metrics.RecordBusinessOperation("report-service", "export_report_csv", time.Since(start), true)
+	}()
+
+	// Получаем ID пользователя из контекста
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Пользователь не авторизован"})
+		return
+	}
+
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Некорректный ID отчета"})
+		return
+	}
+
+	csvData, err := h.reportService.ExportReportToCSV(uint(id), userID.(uint))
+	if err != nil {
+		logrus.WithError(err).Error("Ошибка экспорта отчета в CSV")
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Устанавливаем заголовки для скачивания CSV файла
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=report_"+idStr+".csv")
+	c.String(http.StatusOK, csvData)
 }

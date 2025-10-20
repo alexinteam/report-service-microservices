@@ -1,8 +1,12 @@
 package services
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
 
 	"report-service/internal/models"
 	"report-service/internal/repository"
@@ -49,25 +53,18 @@ func (s *ReportService) CreateReport(userID uint, req *models.ReportCreateReques
 
 // GetReports получает список отчетов пользователя
 func (s *ReportService) GetReports(userID uint, status string, page, limit int) (*models.ReportsResponse, error) {
-	if page <= 0 {
-		page = 1
-	}
-	if limit <= 0 {
-		limit = 10
-	}
-
-	reports, total, err := s.reportRepo.GetReportsWithPagination(page, limit, userID, status)
+	reports, total, err := s.reportRepo.GetAll(page, limit, status)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения отчетов: %w", err)
 	}
 
-	var reportResponses []models.ReportResponse
-	for _, report := range reports {
-		reportResponses = append(reportResponses, report.ToResponse())
+	responses := make([]models.ReportResponse, len(reports))
+	for i, report := range reports {
+		responses[i] = report.ToResponse()
 	}
 
 	return &models.ReportsResponse{
-		Reports: reportResponses,
+		Reports: responses,
 		Total:   total,
 		Page:    page,
 		Limit:   limit,
@@ -116,9 +113,6 @@ func (s *ReportService) UpdateReport(id uint, userID uint, req *models.ReportUpd
 		report.Description = req.Description
 	}
 	if req.Status != "" {
-		if !models.ReportStatus(req.Status).IsValid() {
-			return nil, errors.New("недопустимый статус отчета")
-		}
 		report.Status = req.Status
 	}
 	if req.Parameters != "" {
@@ -135,7 +129,6 @@ func (s *ReportService) UpdateReport(id uint, userID uint, req *models.ReportUpd
 
 // DeleteReport удаляет отчет
 func (s *ReportService) DeleteReport(id uint, userID uint) error {
-	// Проверяем, существует ли отчет и принадлежит ли пользователю
 	report, err := s.reportRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -144,6 +137,7 @@ func (s *ReportService) DeleteReport(id uint, userID uint) error {
 		return fmt.Errorf("ошибка получения отчета: %w", err)
 	}
 
+	// Проверяем, что отчет принадлежит пользователю
 	if report.UserID != userID {
 		return errors.New("доступ запрещен")
 	}
@@ -157,23 +151,17 @@ func (s *ReportService) DeleteReport(id uint, userID uint) error {
 
 // UpdateReportStatus обновляет статус отчета
 func (s *ReportService) UpdateReportStatus(id uint, status string) error {
-	if !models.ReportStatus(status).IsValid() {
-		return errors.New("недопустимый статус отчета")
-	}
-
 	if err := s.reportRepo.UpdateStatus(id, status); err != nil {
-		return fmt.Errorf("ошибка обновления статуса отчета: %w", err)
+		return fmt.Errorf("ошибка обновления статуса: %w", err)
 	}
-
 	return nil
 }
 
 // UpdateReportFilePath обновляет путь к файлу отчета
 func (s *ReportService) UpdateReportFilePath(id uint, filePath string, fileSize int64, md5Hash string) error {
 	if err := s.reportRepo.UpdateFilePath(id, filePath, fileSize, md5Hash); err != nil {
-		return fmt.Errorf("ошибка обновления пути к файлу отчета: %w", err)
+		return fmt.Errorf("ошибка обновления пути к файлу: %w", err)
 	}
-
 	return nil
 }
 
@@ -192,7 +180,7 @@ func (s *ReportService) GenerateReport(id uint, userID uint, req *models.ReportG
 		return nil, errors.New("доступ запрещен")
 	}
 
-	// Обновляем статус на "processing"
+	// Обновляем статус на processing
 	if err := s.reportRepo.UpdateStatus(id, string(models.StatusProcessing)); err != nil {
 		return nil, fmt.Errorf("ошибка обновления статуса: %w", err)
 	}
@@ -226,4 +214,76 @@ func (s *ReportService) DownloadReport(id uint, userID uint) (*models.ReportResp
 
 	response := report.ToResponse()
 	return &response, nil
+}
+
+// ExportReportToCSV экспортирует отчет в формат CSV
+func (s *ReportService) ExportReportToCSV(id uint, userID uint) (string, error) {
+	report, err := s.reportRepo.GetByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", errors.New("отчет не найден")
+		}
+		return "", fmt.Errorf("ошибка получения отчета: %w", err)
+	}
+
+	// Проверяем, что отчет принадлежит пользователю
+	if report.UserID != userID {
+		return "", errors.New("доступ запрещен")
+	}
+
+	// Проверяем, что отчет готов
+	if report.Status != string(models.StatusCompleted) {
+		return "", errors.New("отчет еще не готов")
+	}
+
+	// Создаем CSV данные
+	var csvData strings.Builder
+	writer := csv.NewWriter(&csvData)
+
+	// Заголовки CSV
+	headers := []string{
+		"ID",
+		"Name",
+		"Description",
+		"Template ID",
+		"User ID",
+		"Status",
+		"Parameters",
+		"File Path",
+		"File Size",
+		"MD5 Hash",
+		"Created At",
+		"Updated At",
+	}
+
+	if err := writer.Write(headers); err != nil {
+		return "", fmt.Errorf("ошибка записи заголовков CSV: %w", err)
+	}
+
+	// Данные отчета
+	record := []string{
+		strconv.FormatUint(uint64(report.ID), 10),
+		report.Name,
+		report.Description,
+		strconv.FormatUint(uint64(report.TemplateID), 10),
+		strconv.FormatUint(uint64(report.UserID), 10),
+		report.Status,
+		report.Parameters,
+		report.FilePath,
+		strconv.FormatInt(report.FileSize, 10),
+		report.MD5Hash,
+		report.CreatedAt.Format(time.RFC3339),
+		report.UpdatedAt.Format(time.RFC3339),
+	}
+
+	if err := writer.Write(record); err != nil {
+		return "", fmt.Errorf("ошибка записи данных CSV: %w", err)
+	}
+
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return "", fmt.Errorf("ошибка записи CSV: %w", err)
+	}
+
+	return csvData.String(), nil
 }

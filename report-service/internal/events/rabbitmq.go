@@ -14,7 +14,6 @@ type RabbitMQPublisher struct {
 	channel *amqp.Channel
 }
 
-// NewRabbitMQPublisher создает новый RabbitMQ publisher
 func NewRabbitMQPublisher(amqpURL string) (*RabbitMQPublisher, error) {
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {

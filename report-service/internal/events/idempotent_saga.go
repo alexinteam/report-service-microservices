@@ -92,6 +92,18 @@ func NewIdempotentReportCreationSaga(reportID, userID, templateID string, parame
 				},
 				Status: SagaStepPending,
 			},
+			{
+				ID:         "update-status",
+				Name:       "Update Report Status",
+				Service:    "report-service",
+				Action:     "update_status",
+				Compensate: "none", // Статус не компенсируется
+				Data: map[string]interface{}{
+					"user_id": userID,
+					"status":  "completed",
+				},
+				Status: SagaStepPending,
+			},
 		},
 	}
 }
@@ -120,8 +132,28 @@ func (s *IdempotentReportCreationSaga) Execute(ctx context.Context, coordinator 
 	for i, step := range s.Steps {
 		log.Printf("Выполняем шаг %d: %s", i+1, step.Name)
 
+		// Получаем актуальное состояние саги перед выполнением шага
+		saga, err := coordinator.GetSagaState(ctx, s.ID)
+		if err != nil {
+			log.Printf("Ошибка получения состояния Saga: %v", err)
+			return fmt.Errorf("ошибка получения состояния Saga: %w", err)
+		}
+
+		// Находим актуальный шаг в состоянии саги
+		var actualStep *SagaStep
+		for _, s := range saga.Steps {
+			if s.ID == step.ID {
+				actualStep = s
+				break
+			}
+		}
+		if actualStep == nil {
+			log.Printf("Шаг %s не найден в состоянии Saga", step.ID)
+			return fmt.Errorf("шаг %s не найден в состоянии Saga", step.ID)
+		}
+
 		// Выполняем шаг через идемпотентный coordinator
-		err := coordinator.ExecuteStep(ctx, s.ID, step.ID)
+		err = coordinator.ExecuteStep(ctx, s.ID, step.ID)
 		if err != nil {
 			log.Printf("Ошибка выполнения шага %s: %v", step.Name, err)
 

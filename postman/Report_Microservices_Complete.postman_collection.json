@@ -223,6 +223,81 @@
 			"name": "Report Service",
 			"item": [
 				{
+					"name": "Create Report Saga",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"template_id\": \"{{template_id}}\",\n  \"name\": \"Demo Report\",\n  \"format\": \"html\",\n  \"parameters\": {\n    \"title\": \"Demo\"\n  }\n}"
+						},
+						"url": {
+							"raw": "http://arch.homework/api/v1/sagas/reports",
+							"protocol": "http",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sagas",
+								"reports"
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 202\", function () {",
+									"    pm.expect([200,202]).to.include(pm.response.code);",
+									"});",
+									"const data = pm.response.json();",
+									"if (data.saga_id) { pm.environment.set('saga_id', data.saga_id); }"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Saga Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "http://arch.homework/api/v1/sagas/{{saga_id}}",
+							"protocol": "http",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"path": [
+								"api",
+								"v1",
+								"sagas",
+								"{{saga_id}}"
+							]
+						}
+					}
+				},
+				{
 					"name": "Create Report (Async)",
 					"request": {
 						"method": "POST",
@@ -428,6 +503,53 @@
 							]
 						}
 					}
+				},
+				{
+					"name": "Export Report CSV",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "http://arch.homework/api/v1/reports/{{report_id}}/export/csv",
+							"protocol": "http",
+							"host": [
+								"arch",
+								"homework"
+							],
+							"path": [
+								"api",
+								"v1",
+								"reports",
+								"{{report_id}}",
+								"export",
+								"csv"
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Export CSV successful', function () {",
+									"    pm.response.to.have.status(200);",
+									"    pm.response.to.have.header('Content-Type', 'text/csv');",
+									"    pm.response.to.have.header('Content-Disposition');",
+									"});",
+									"",
+									"pm.test('Response time is less than 5000ms', function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(5000);",
+									"});"
+								]
+							}
+						}
+					]
 				}
 			]
 		},
@@ -718,7 +840,7 @@
 				"type": "text/javascript",
 				"exec": [
 					"// Установка переменных окружения",
-					"pm.environment.set('base_url', 'http://localhost');",
+					"pm.environment.set('base_url', 'http://arch.homework');",
 					"",
 					"// Автоматическое извлечение JWT токена из ответа логина",
 					"if (pm.info.requestName === 'Login User') {",
@@ -796,7 +918,7 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://localhost",
+			"value": "http://arch.homework",
 			"type": "string"
 		},
 		{

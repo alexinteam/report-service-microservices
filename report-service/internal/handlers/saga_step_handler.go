@@ -14,13 +14,15 @@ import (
 
 // SagaStepHandler обработчик для выполнения шагов Saga
 type SagaStepHandler struct {
-	reportService *services.ReportService
+	reportService  *services.ReportService
+	eventPublisher events.EventPublisher
 }
 
 // NewSagaStepHandler создает новый обработчик шагов Saga
-func NewSagaStepHandler(reportService *services.ReportService) *SagaStepHandler {
+func NewSagaStepHandler(reportService *services.ReportService, eventPublisher events.EventPublisher) *SagaStepHandler {
 	return &SagaStepHandler{
-		reportService: reportService,
+		reportService:  reportService,
+		eventPublisher: eventPublisher,
 	}
 }
 
@@ -60,43 +62,87 @@ func (h *SagaStepHandler) executeReportServiceStep(ctx context.Context, step *ev
 
 // generateReport генерирует отчет
 func (h *SagaStepHandler) generateReport(ctx context.Context, step *events.SagaStep) error {
-	reportIDStr, ok := step.Data["report_id"].(string)
+	// Получаем данные из шага
+	templateIDStr, ok := step.Data["template_id"].(string)
 	if !ok {
-		return fmt.Errorf("отсутствует report_id в данных шага")
+		return fmt.Errorf("отсутствует template_id в данных шага")
 	}
 
-	reportID, err := strconv.ParseUint(reportIDStr, 10, 32)
+	userIDStr, ok := step.Data["user_id"].(string)
+	if !ok {
+		return fmt.Errorf("отсутствует user_id в данных шага")
+	}
+
+	parameters, ok := step.Data["parameters"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("отсутствуют parameters в данных шага")
+	}
+
+	// Парсим ID
+	templateID, err := strconv.ParseUint(templateIDStr, 10, 32)
 	if err != nil {
-		return fmt.Errorf("некорректный report_id: %w", err)
+		return fmt.Errorf("некорректный template_id: %w", err)
 	}
 
-	// Обновляем статус на processing
-	if err := h.reportService.UpdateReportStatus(uint(reportID), string(models.StatusProcessing)); err != nil {
-		return fmt.Errorf("ошибка обновления статуса на processing: %w", err)
+	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+	if err != nil {
+		return fmt.Errorf("некорректный user_id: %w", err)
 	}
 
-	logrus.Infof("Статус отчета %d обновлен на processing", reportID)
+	// Создаем запрос на создание отчета
+	createReq := &models.ReportCreateRequest{
+		Name:        parameters["title"].(string),
+		Description: "Отчет создан через сагу",
+		TemplateID:  uint(templateID),
+		Parameters:  fmt.Sprintf(`{"title":"%s"}`, parameters["title"].(string)),
+	}
+
+	// Сохраняем отчет в БД
+	createdReport, err := h.reportService.CreateReport(uint(userID), createReq)
+	if err != nil {
+		return fmt.Errorf("ошибка создания отчета: %w", err)
+	}
+
+	// Обновляем report_id в данных шага для последующих шагов
+	step.Data["report_id"] = strconv.FormatUint(uint64(createdReport.ID), 10)
+
+	logrus.Infof("Отчет %d создан и статус установлен на processing", createdReport.ID)
 	return nil
 }
 
 // updateReportStatus обновляет статус отчета
 func (h *SagaStepHandler) updateReportStatus(ctx context.Context, step *events.SagaStep) error {
-	reportIDStr, ok := step.Data["report_id"].(string)
-	if !ok {
-		return fmt.Errorf("отсутствует report_id в данных шага")
-	}
-
 	status, ok := step.Data["status"].(string)
 	if !ok {
 		return fmt.Errorf("отсутствует status в данных шага")
 	}
 
-	reportID, err := strconv.ParseUint(reportIDStr, 10, 32)
-	if err != nil {
-		return fmt.Errorf("некорректный report_id: %w", err)
+	// Получаем user_id из данных шага
+	userID, _ := step.Data["user_id"].(string)
+	if userID == "" {
+		return fmt.Errorf("отсутствует user_id в данных шага")
 	}
 
-	if err := h.reportService.UpdateReportStatus(uint(reportID), status); err != nil {
+	// Получаем report_id из БД - ищем последний отчет для данного пользователя
+	userIDUint, err := strconv.ParseUint(userID, 10, 32)
+	if err != nil {
+		return fmt.Errorf("некорректный user_id: %w", err)
+	}
+
+	// Получаем последний отчет пользователя
+	reportsResponse, err := h.reportService.GetReports(uint(userIDUint), "", 1, 1)
+	if err != nil {
+		return fmt.Errorf("ошибка получения отчетов пользователя: %w", err)
+	}
+
+	if len(reportsResponse.Reports) == 0 {
+		return fmt.Errorf("отчеты пользователя %s не найдены", userID)
+	}
+
+	// Используем ID последнего отчета
+	reportID := reportsResponse.Reports[0].ID
+
+	if err := h.reportService.UpdateReportStatus(reportID, status); err != nil {
 		return fmt.Errorf("ошибка обновления статуса отчета: %w", err)
 	}
 
@@ -178,9 +224,38 @@ func (h *SagaStepHandler) executeStorageServiceStep(ctx context.Context, step *e
 func (h *SagaStepHandler) executeNotificationServiceStep(ctx context.Context, step *events.SagaStep) error {
 	switch step.Action {
 	case "send_notification":
-		// Здесь должна быть логика отправки уведомления
-		// Пока просто логируем
-		logrus.Info("Уведомление отправлено")
+		// Получаем user_id из данных шага
+		userID, _ := step.Data["user_id"].(string)
+
+		// Получаем report_id из БД - ищем последний отчет для данного пользователя
+		userIDUint, err := strconv.ParseUint(userID, 10, 32)
+		if err != nil {
+			return fmt.Errorf("некорректный user_id: %w", err)
+		}
+
+		// Получаем последний отчет пользователя
+		reportsResponse, err := h.reportService.GetReports(uint(userIDUint), "", 1, 1)
+		if err != nil {
+			return fmt.Errorf("ошибка получения отчетов пользователя: %w", err)
+		}
+
+		if len(reportsResponse.Reports) == 0 {
+			return fmt.Errorf("отчеты пользователя %s не найдены", userID)
+		}
+
+		// Используем ID последнего отчета
+		reportID := strconv.FormatUint(uint64(reportsResponse.Reports[0].ID), 10)
+
+		// Публикуем событие, которое прочитает notification-service
+		event := events.NewEvent(events.ReportCompleted, "report-service", map[string]interface{}{
+			"report_id": reportID,
+			"user_id":   userID,
+			"type":      "report_ready",
+		})
+		if err := h.eventPublisher.Publish(ctx, event); err != nil {
+			return fmt.Errorf("ошибка публикации события уведомления: %w", err)
+		}
+		logrus.Infof("Событие ReportCompleted опубликовано для notification-service с report_id: %s", reportID)
 		return nil
 	default:
 		return fmt.Errorf("неизвестное действие для notification-service: %s", step.Action)

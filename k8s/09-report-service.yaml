@@ -30,7 +30,7 @@ data:
   ENVIRONMENT: "production"
   LOG_LEVEL: "info"
   DATABASE_URL: "postgres://postgres:password@report-service-postgres.report-service.svc.cluster.local:5432/report_service?sslmode=disable"
-  RABBITMQ_URL: "amqp://admin:password@rabbitmq.system.svc.cluster.local:5672/"
+  RABBITMQ_URL: "amqp://admin:admin@rabbitmq.system.svc.cluster.local:5672/"
   AUTO_MIGRATE: "true"
   SEED_DATA: "true"
 
